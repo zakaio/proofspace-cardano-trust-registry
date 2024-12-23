@@ -1,8 +1,14 @@
 package proofspace.trustregistry.model
 
 import scalus.builtin.*
-import scalus.ledger.api.v3.PosixTime
-import scalus.ledger.api.v3.TxId
+import scalus.builtin.Data.{FromData, ToData}
+import scalus.builtin.ToDataInstances.given
+import scalus.builtin.FromDataInstances.given
+import scalus.ledger.api.v3.{*, given}
+import scalus.ledger.api.v3.ToDataInstances.given
+import scalus.ledger.api.v3.FromDataInstances.given
+
+import proofspace.trustregistry.common.*
 
 /**
  * Here is a representation of trust registry, which exists in the offline
@@ -54,10 +60,18 @@ trait TrustRegistrySnapshot {
  * Change describe by the set of the trust registry operation.
  * Mapping from transaction to changed is defined by maintance model.
  */
-case class TrustRegistryChange(id: TxId, registryId: TxId, operations: List[TrustRegistryOperation], time: PosixTime)
+case class TrustRegistryChange(id: TxId, registryId: TxId, operations: scalus.prelude.List[TrustRegistryOperation], time: PosixTime)
+
+object TrustRegistryChange {
+  
+  given ToData[TrustRegistryChange] = ToData.deriveCaseClass[TrustRegistryChange](0)
+  
+  given FromData[TrustRegistryChange] = FromData.deriveCaseClass[TrustRegistryChange]
+
+}
 
 
-enum TrustRegistryOperation {
+enum TrustRegistryOperation  {
 
   case AddDid(did: ByteString)
   case RemoveDid(did: ByteString)
@@ -66,5 +80,22 @@ enum TrustRegistryOperation {
   
 }
 
+object TrustRegistryOperation {
+
+  given ToData[TrustRegistryOperation] = (op:TrustRegistryOperation) => {
+    op match
+      case x@TrustRegistryOperation.AddDid(did) =>
+        Builtins.constrData(0, scalus.builtin.List(Data.B(x.did)) )
+        //Data.Constr(0, Builtins.mkCons(Data.B(x)) scala.collection.immutable.List(Data.B(x.did)))
+      case x@TrustRegistryOperation.RemoveDid(did) =>
+        //Data.Constr(1, scala.collection.immutable.List(Data.B(x.did)))
+        Builtins.constrData(1, scalus.builtin.List(Data.B(x.did)) )
+      case x@TrustRegistryOperation.ChangeMaintanceModel(newMaintanceModel) =>
+        Builtins.constrData(2, scalus.builtin.List(summon[ToData[TrustRegistryMaintanceModel]](x.newMaintanceModel)))
+  }
+
+  given FromData[TrustRegistryOperation] = FromData.deriveCaseClass[TrustRegistryOperation]
+
+}
 
 
