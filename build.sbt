@@ -23,18 +23,21 @@ lazy val server = project
                  .in(file("server"))
                  .settings(commonSettings)
 
-lazy val blockfrostAPI = project
+lazy val blockfrostApi = project
   .in(file("blockfrost-api"))
   .settings(commonSettings)
   .settings(
-    openApiInputSpec := s"${baseDirectory.value.getPath}/petstore.yaml",
+    openApiInputSpec := s"${baseDirectory.value.getPath}/blockfrost-openapi.yaml",
     openApiGeneratorName := "scala-sttp",
     openApiOutputDir := baseDirectory.value.name,
+    openApiIgnoreFileOverride := s"${baseDirectory.in(ThisBuild).value.getPath}/openapi-ignore-file",
     libraryDependencies ++= Seq(
       "com.softwaremill.sttp.client4" %% "core" % "4.0.0-M20",
       "com.softwaremill.sttp.client4" %% "json4s" % "4.0.0-M20",
-      "org.json4s" %% "json4s-jackson" % "3.6.8"
-    )
+      "org.json4s" %% "json4s-jackson" % "4.0.3"
+    ),
+    (compile in Compile) := ((compile in Compile) dependsOn openApiGenerate).value,
+    cleanFiles += baseDirectory.value / "src"
   )
 
 lazy val root = project
