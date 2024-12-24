@@ -1,3 +1,3 @@
 package proofspace.trustregistry.offchain
 
-class blockFrostAPI
+class BlockFrostAPI

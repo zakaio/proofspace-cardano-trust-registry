@@ -23,7 +23,19 @@ lazy val server = project
                  .in(file("server"))
                  .settings(commonSettings)
 
-
+lazy val blockfrostAPI = project
+  .in(file("blockfrost-api"))
+  .settings(commonSettings)
+  .settings(
+    openApiInputSpec := s"${baseDirectory.value.getPath}/petstore.yaml",
+    openApiGeneratorName := "scala-sttp",
+    openApiOutputDir := baseDirectory.value.name,
+    libraryDependencies ++= Seq(
+      "com.softwaremill.sttp.client4" %% "core" % "4.0.0-M20",
+      "com.softwaremill.sttp.client4" %% "json4s" % "4.0.0-M20",
+      "org.json4s" %% "json4s-jackson" % "3.6.8"
+    )
+  )
 
 lazy val root = project
                 .in(file("."))
