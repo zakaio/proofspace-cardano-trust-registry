@@ -1,7 +1,7 @@
 package proofspace.trustregistry.onchain
 
 import proofspace.trustregistry.common.PreludeListData
-import proofspace.trustregistry.model.TrustRegistryChange
+import proofspace.trustregistry.model.{TrustRegistryChange, TrustRegistryOperation}
 import scalus.builtin.{ByteString, Data}
 import scalus.builtin.Data.FromData
 import scalus.ledger.api.v3.{PubKeyHash, ScriptContext}
@@ -16,15 +16,15 @@ object SindleMaintainer  {
    * We assume that changes in the trust registry are packet in the transaction,
    * but do not verify this.
    */
-  def verifyMin(pkh: PubKeyHash)(ctx: ScriptContext) : Boolean = {
-       scalus.prelude.List.find(ctx.txInfo.signatories)(_ == pkh) != Maybe.Nothing
+  def verifyMin(pkh: PubKeyHash)(ctx: ScriptContext) = {
+       scalus.prelude.List.findOrFail(ctx.txInfo.signatories)(_ == pkh)
   }
 
   /**
-   * Check, if the given data is a valid trust registry change.
+   * Check, if the given data is a valid trust registry operations.
    */
   def verifyDatum(datum: Data): Boolean = {
-    val operations = PreludeListData.listFromData[TrustRegistryChange](datum)
+    val operations = PreludeListData.listFromData[TrustRegistryOperation](datum)
     operations != scalus.prelude.List.Nil
   }
 

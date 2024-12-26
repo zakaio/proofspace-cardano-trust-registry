@@ -17,10 +17,15 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
                 .settings(scalusSettings)
                 .settings(
                    name := "cardano-trustregistry-core",
+                    libraryDependencies ++= Seq(
+                      "com.github.rssh" %%% "dotty-cps-async" % "0.9.23",
+                      "com.outr" %%% "scribe" % "3.15.3"
+                    )
                 )
      
 lazy val server = project
                  .in(file("server"))
+                 .dependsOn(core.jvm)
                  .settings(commonSettings)
                  .settings(
                    name := "cardano-trustregistry-service",

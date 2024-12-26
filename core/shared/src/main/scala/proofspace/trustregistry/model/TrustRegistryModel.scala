@@ -1,6 +1,6 @@
 package proofspace.trustregistry.model
 
-import scalus.builtin.*
+import scalus.builtin.{List => _, *}
 import scalus.builtin.Data.{FromData, ToData}
 import scalus.builtin.ToDataInstances.given
 import scalus.builtin.FromDataInstances.given
@@ -55,20 +55,22 @@ trait TrustRegistrySnapshot {
   
 }
 
+/**
+ * Trust registry, which is changed with time.
+ */
+trait TrustRegistry {
+
+  def name: String
+
+  def snapshot: TrustRegistrySnapshot
+
+}
 
 /**
  * Change describe by the set of the trust registry operation.
  * Mapping from transaction to changed is defined by maintance model.
  */
-case class TrustRegistryChange(id: TxId, registryId: TxId, operations: scalus.prelude.List[TrustRegistryOperation], time: PosixTime)
-
-object TrustRegistryChange {
-  
-  given ToData[TrustRegistryChange] = ToData.deriveCaseClass[TrustRegistryChange](0)
-  
-  given FromData[TrustRegistryChange] = FromData.deriveCaseClass[TrustRegistryChange]
-
-}
+case class TrustRegistryChange(id: TxId, registryId: TxId, operations: Seq[TrustRegistryOperation], time: PosixTime)
 
 
 enum TrustRegistryOperation  {
