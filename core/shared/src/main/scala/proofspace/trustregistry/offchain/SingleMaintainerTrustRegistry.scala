@@ -138,11 +138,11 @@ class SingleMaintainerTrustRegistry(pkh: PubKeyHash,
 object SingleMaintainerTrustRegistry {
 
   def apply(pkh: PubKeyHash, address: Address, txId: TxId, startTime: PosixTime, name: String, cardanoAccess: CardanoOfflineAccess): SingleMaintainerTrustRegistry = {
-      SingleMaintainerTrustRegistry(pkh, address, txId, txId, startTime, name, Map.empty)
+      val snapshot = SingleMaintainerTrustRegistrySnapshot(pkh, address, txId, txId, startTime, name, Map.empty)
+      val transactions = cardanoAccess.iterateTransactionsFrom(address, txId, 100)
+      new SingleMaintainerTrustRegistry(pkh, address, snapshot, transactions)
   }
 
-  def apply(pkh: PubKeyHash, address: Address, txId: TxId, lastTxId: TxId, lastTouch: PosixTime, name: String, dids: Map[ByteString,ByteString]): SingleMaintainerTrustRegistry = {
-    SingleMaintainerTrustRegistry(pkh, address, txId, lastTxId, lastTouch, name, dids)
-  }
+  
 
 }

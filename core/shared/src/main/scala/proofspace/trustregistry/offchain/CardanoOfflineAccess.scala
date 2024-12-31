@@ -1,8 +1,7 @@
 package proofspace.trustregistry.offchain
 
 import scala.concurrent.Future
-import scalus.ledger.api.v3.{Address, PubKeyHash}
-
+import scalus.ledger.api.v3.{Address, PubKeyHash, TxId}
 import cps.stream.*
 
 /**
@@ -11,7 +10,7 @@ import cps.stream.*
  */
 trait CardanoOfflineAccess {
 
-   def iterateTransactionsFrom(address: Address, txId: String, n:Int): AsyncList[Future, CardanoTransactionOfflineAccess]
+   def iterateTransactionsFrom(address: Address, txId: TxId, n:Int): AsyncList[Future, CardanoTransactionOfflineAccess]
 
 
 }
