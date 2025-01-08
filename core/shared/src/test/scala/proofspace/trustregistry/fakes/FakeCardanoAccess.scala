@@ -7,11 +7,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map as MutableMap
 import scala.util.*
-import scalus.ledger.api.v3.{Address, TxId, TxInfo, PosixTime}
+import scalus.ledger.api.v3.{Address, PosixTime, TxId, TxInfo}
 import cps.*
 import cps.monads.{*, given}
 import cps.stream.*
 import proofspace.trustregistry.offchain.*
+
+import java.util.concurrent.atomic.AtomicBoolean
 
 class FakeCardanoAccess extends CardanoOfflineAccess {
 
@@ -32,16 +34,20 @@ class FakeCardanoAccess extends CardanoOfflineAccess {
     }
   }
 
-  override def iterateTransactionsFrom(address: Address, txId: TxId, n: Int): AsyncList[Future, CardanoTransactionOfflineAccess] = {
+  override def iterateTransactionsTo(address: Address, txId: TxId, n: Int): AddressTransactionAccess = {
 
     val txs = transactionsByAddress.getOrElse(address, ArrayBuffer.empty)
     val start = txs.indexWhere(_.id == txId)
     val end = start + n
 
-    val retval = asyncStream[AsyncList[Future, CardanoTransactionOfflineAccess]] { out =>
+    val updatedFlag = new AtomicBoolean(false)
+    val transactions = asyncStream[AsyncList[Future, CardanoTransactionOfflineAccess]] { out =>
       for(i <- start until end) {
-        out.emit(txs(i))
+        val tx = synchronized(txs(i))
+        out.emit(tx)
       }
+      updatedFlag.set(true)
+
       // TODO: mark the registry as realtime (not historical)
       listeners.append {
         (tx: TxInfo, time) => out.emitAsync(TxInfoAsOfflineAccess(tx,time)).onComplete {
@@ -53,7 +59,7 @@ class FakeCardanoAccess extends CardanoOfflineAccess {
       }
     }
 
-    retval
+    AddressTransactionAccess(address, transactions, updatedFlag)
 
   }
 

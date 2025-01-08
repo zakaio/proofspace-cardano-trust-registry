@@ -5,6 +5,7 @@ import scalus.builtin.ByteString
 import scalus.ledger.api.v3.*
 
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable.Map
 import scala.concurrent.Future
@@ -64,23 +65,31 @@ case class SingleMaintainerTrustRegistrySnapshot(pkh: PubKeyHash,
 class SingleMaintainerTrustRegistry(pkh: PubKeyHash,
                                     targetAddress: Address,
                                     inSnapshot: SingleMaintainerTrustRegistrySnapshot,
-                                    transactions: AsyncList[Future, CardanoTransactionOfflineAccess]) extends TrustRegistry {
+                                    transactions: AsyncList[Future, CardanoTransactionOfflineAccess],
+                                    updatedFlag: AtomicBoolean
+                                   ) extends TrustRegistry {
 
   val snapshotRef = AtomicReference(inSnapshot)
 
   def name = snapshotRef.get().name
 
+  def isUpdated = updatedFlag.get()
+
+  val registryId = inSnapshot.txId
+
   val foldFuture = transactions.fold(inSnapshot) { (snapshot, tx) =>
     retrieveChange(tx) match
       case Some(change) =>
-        try
-          val next = snapshot.applyChange(change)
-          snapshotRef.set(next)
-          next
-        catch
-          case NonFatal(e) =>
-            scribe.error(s"Failed to apply change from transaction ${tx.id}, skip", e)
-            snapshot
+        if (change.registryId == registryId  ) then
+          try
+            val next = snapshot.applyChange(change)
+            snapshotRef.set(next)
+            next
+          catch
+            case NonFatal(e) =>
+              scribe.error(s"Failed to apply change from transaction ${tx.id}, skip", e)
+              snapshot
+        else snapshot      
       case None =>
         snapshot
   }
@@ -139,8 +148,8 @@ object SingleMaintainerTrustRegistry {
 
   def apply(pkh: PubKeyHash, address: Address, txId: TxId, startTime: PosixTime, name: String, cardanoAccess: CardanoOfflineAccess): SingleMaintainerTrustRegistry = {
       val snapshot = SingleMaintainerTrustRegistrySnapshot(pkh, address, txId, txId, startTime, name, Map.empty)
-      val transactions = cardanoAccess.iterateTransactionsFrom(address, txId, 100)
-      new SingleMaintainerTrustRegistry(pkh, address, snapshot, transactions)
+      val ta = cardanoAccess.iterateTransactionsTo(address, txId, 100)
+      new SingleMaintainerTrustRegistry(pkh, address, snapshot, ta.transactions, ta.updateFlag)
   }
 
   
