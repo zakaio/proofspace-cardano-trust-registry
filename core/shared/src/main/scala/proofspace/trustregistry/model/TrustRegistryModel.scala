@@ -62,7 +62,7 @@ trait TrustRegistry {
 
   def name: String
   
-  def isUpdated: Boolean
+  def isUpdated: Boolean 
 
   def snapshot: TrustRegistrySnapshot
 

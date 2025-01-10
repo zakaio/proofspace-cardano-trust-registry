@@ -5,10 +5,11 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
 
 case class TrustRegistryEntryQueryDTO(
+                                     registryId: String,
                                      limit: Option[Int],
                                      offset: Option[Int],
                                      orderBy: Option[String],
-                                     orderByDirection: String,
+                                     orderByDirection: Option[String],
                                      did: Option[String],
                                      status: Option[TrustRegistryEntryStatusDTO]
                                      ) 
