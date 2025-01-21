@@ -12,7 +12,11 @@ trait TrustRegistryBackend {
   
   def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO]
   
-  def submitChange(change: TrustRegistryChangeDTO): Future[Unit]
+  def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO]
+  
+  def rejectChange(changeId: String): Future[Unit]
+  
+  def approveChange(changeId: String): Future[Unit]
   
   def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryEntriesDTO]
   
