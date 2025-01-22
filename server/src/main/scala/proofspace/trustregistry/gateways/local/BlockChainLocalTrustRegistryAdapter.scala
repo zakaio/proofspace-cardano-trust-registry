@@ -16,7 +16,7 @@ trait BlockChainLocalTrustRegistryAdapter  {
    */
   def createTrustRegistry(createTrustRegistryDTO: CreateTrustRegistryDTO): Future[String]
 
-
+  def createTrustRegistryChangeRequest(trustRegistryChangeDTO: TrustRegistryChangeDTO): Future[String]
 
 
 }

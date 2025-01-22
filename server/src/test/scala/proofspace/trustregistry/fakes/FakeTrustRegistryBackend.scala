@@ -2,14 +2,15 @@ package proofspace.trustregistry.fakes
 
 import org.slf4j.LoggerFactory
 import proofspace.trustregistry.dto.TrustRegistryEntryStatusDTO.Active
-import proofspace.trustregistry.dto.{CreateTrustRegistryDTO, TrustRegistryChangeDTO, TrustRegistryDTO, TrustRegistryEntriesDTO, TrustRegistryEntryDTO, TrustRegistryEntryQueryDTO}
+import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.Add
+import proofspace.trustregistry.dto.{CreateTrustRegistryDTO, TrustRegistryChangeDTO, TrustRegistryDTO, TrustRegistryDidChangeDTO, TrustRegistryDidEntriesDTO, TrustRegistryDidEntryDTO, TrustRegistryEntryQueryDTO}
 
 import scala.collection.mutable.Queue
 import scala.collection.mutable.Map as MutableMap
 import scala.collection.concurrent.TrieMap
 import proofspace.trustregistry.gateways.TrustRegistryBackend
 
-import java.time.LocalDateTime
+import java.time.{LocalDateTime, ZoneOffset}
 import scala.concurrent.Future
 
 
@@ -29,13 +30,16 @@ class FakeTrustRegistryBackend extends TrustRegistryBackend {
         Future.successful(TrustRegistryDTO(create.name, create.name, create.network, None, None, now))
   }
 
-  override def queryDid(registryId: String, did: String): Future[Option[TrustRegistryEntryDTO]] = {
+  override def queryDid(registryId: String, did: String): Future[Option[TrustRegistryDidEntryDTO]] = {
     registries.get(registryId) match {
       case Some(registry) =>
         val entry = registry.entries.get(did)
         entry match {
           case Some(entry) =>
-            val dto = TrustRegistryEntryDTO(entry.did, Active , entry.lastChange.changeId, entry.lastChangeDate)
+            val didChange = entry.lastChange.changeId.map{ changeId =>
+              TrustRegistryDidChangeDTO(changeId, Add, entry.lastChangeDate.atOffset(ZoneOffset.UTC))
+            }
+            val dto = TrustRegistryDidEntryDTO(entry.did, Active , didChange, None)
             Future.successful(Some(dto))
           case None => Future.successful(None)
         }
@@ -43,26 +47,37 @@ class FakeTrustRegistryBackend extends TrustRegistryBackend {
     }
   }
 
-  override def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryEntriesDTO] = {
+  override def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryDidEntriesDTO] = {
     registries.get(query.registryId) match
       case Some(registry) =>
         val (entries, total) = registry.queryEntries(query)
         val items = entries.map{ entry =>
-          TrustRegistryEntryDTO(entry.did, Active, entry.lastChange.changeId, entry.lastChangeDate)
+          val didChange = entry.lastChange.changeId.map{ changeId =>
+            TrustRegistryDidChangeDTO(changeId, Add, entry.lastChangeDate.atOffset(ZoneOffset.UTC))
+          }
+          TrustRegistryDidEntryDTO(entry.did, Active, didChange, None)
         }
-        Future.successful(TrustRegistryEntriesDTO(items,total))
+        Future.successful(TrustRegistryDidEntriesDTO(items,total))
       case None =>
         throw new Exception(s"Registry with id ${query.registryId} not found")
   }
 
 
-  override def submitChange(change: TrustRegistryChangeDTO): Future[Unit] = {
-    registries.get(change.trustRegistryId) match {
+  override def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO] = {
+    registries.get(change.registryId) match {
       case Some(registry) =>
         val entry = registry.applyEntry(change)
-        Future.successful(())
-      case None => throw new Exception(s"Registry with id ${change.trustRegistryId} not found")
+        Future.successful(change)
+      case None => throw new IllegalArgumentException(s"Registry with id ${change.registryId} not found")
     }
+  }
+  
+  override def rejectChange(changeId: String): Future[Unit] = {
+    throw new NotImplementedError("Not implemented")
+  }
+  
+  override def approveChange(changeId: String): Future[Unit] = {
+    Future successful(())
   }
   
 }

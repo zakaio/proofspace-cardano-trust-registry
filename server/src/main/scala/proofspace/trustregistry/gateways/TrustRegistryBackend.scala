@@ -18,8 +18,8 @@ trait TrustRegistryBackend {
   
   def approveChange(changeId: String): Future[Unit]
   
-  def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryEntriesDTO]
+  def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryDidEntriesDTO]
   
-  def queryDid(registryId: String, did: String): Future[Option[TrustRegistryEntryDTO]]
+  def queryDid(registryId: String, did: String): Future[Option[TrustRegistryDidEntryDTO]]
   
 }

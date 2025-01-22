@@ -50,25 +50,25 @@ case class TrustRegistryDidChangeDTO(
  * @param state - state of the entry
  * @param lastChangeDate - last changed date in UTC timezone
  */
-case class TrustRegistryEntryDTO(
+case class TrustRegistryDidEntryDTO(
                                   did: String,
                                   status: TrustRegistryEntryStatusDTO,
                                   acceptedChange: Option[TrustRegistryDidChangeDTO],
                                   proposedChange: Option[TrustRegistryDidChangeDTO],
                                 )  {
 
-  given JsonValueCodec[TrustRegistryEntryDTO] = JsonCodecMaker.make
+  given JsonValueCodec[TrustRegistryDidEntryDTO] = JsonCodecMaker.make
 
 }
 
-case class TrustRegistryEntriesDTO(
-              items: Seq[TrustRegistryEntryDTO],
-              itemsTotal: Int
+case class TrustRegistryDidEntriesDTO(
+                                    items: Seq[TrustRegistryDidEntryDTO],
+                                    itemsTotal: Int
                                   )
 
 
-object TrustRegistryEntriesDTO {
+object TrustRegistryDidEntriesDTO {
 
-  given JsonValueCodec[TrustRegistryEntriesDTO] = JsonCodecMaker.make
+  given JsonValueCodec[TrustRegistryDidEntriesDTO] = JsonCodecMaker.make
 
 }

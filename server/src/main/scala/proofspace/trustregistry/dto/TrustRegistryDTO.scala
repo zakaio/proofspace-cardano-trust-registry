@@ -23,7 +23,7 @@ object TrustRegistryDTO {
 case class CreateTrustRegistryDTO(
                                    name: String,
                                    network: String,
-                                   subnetwork: String,
+                                   subnetwork: Option[String],
                                    didPrefix: Option[String],
                                    targetAdderss: Option[String],
                                  )
