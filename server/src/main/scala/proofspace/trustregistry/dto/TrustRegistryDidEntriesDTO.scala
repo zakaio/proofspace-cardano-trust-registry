@@ -26,12 +26,12 @@ object TrustRegistryProposalStatusDTO {
 
   def toInt(status: TrustRegistryProposalStatusDTO): Int = status match {
     case TrustRegistryProposalStatusDTO.Add => 1
-    case TrustRegistryProposalStatusDTO.Remove => 2
+    case TrustRegistryProposalStatusDTO.Remove => -1
   }
 
   def fromInt(status: Int): TrustRegistryProposalStatusDTO = status match {
     case 1 => TrustRegistryProposalStatusDTO.Add
-    case 2 => TrustRegistryProposalStatusDTO.Remove
+    case -1 => TrustRegistryProposalStatusDTO.Remove
     case _ => throw new IllegalArgumentException(s"Invalid Value for TrustRegistryProposalStatusDTO : $status")
   }
 

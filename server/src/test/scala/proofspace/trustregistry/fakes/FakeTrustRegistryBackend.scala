@@ -72,12 +72,12 @@ class FakeTrustRegistryBackend extends TrustRegistryBackend {
     }
   }
   
-  override def rejectChange(changeId: String): Future[Unit] = {
+  override def rejectChange(registryId: String, changeId: String): Future[Boolean] = {
     throw new NotImplementedError("Not implemented")
   }
   
-  override def approveChange(changeId: String): Future[Unit] = {
-    Future successful(())
+  override def approveChange(registryId: String, changeId: String): Future[Boolean] = {
+    Future successful(true)
   }
   
 }
@@ -133,13 +133,9 @@ object FakeTrustRegistryBackend {
 
     def queryEntries(query: TrustRegistryEntryQueryDTO): ( Seq[Entry], Int) = {
       val fun = (entry: Entry) => {
-        val r1 = query.did match
+        query.did match
           case Some(did) => entry.did == did
           case None => true
-        val r2 = query.status match
-          case Some(status) => entry.status == status.toString
-          case None => true
-        r1 && r2
       }
       val filtered = entries.values.filter(fun).toSeq
       val sorted0 = query.orderBy.getOrElse("lastChangeDate") match

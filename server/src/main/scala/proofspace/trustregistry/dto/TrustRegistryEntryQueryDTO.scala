@@ -11,7 +11,6 @@ case class TrustRegistryEntryQueryDTO(
                                      orderBy: Option[String],
                                      orderByDirection: Option[String],
                                      did: Option[String],
-                                     status: Option[TrustRegistryEntryStatusDTO]
                                      ) 
 
 object TrustRegistryEntryQueryDTO {

@@ -83,11 +83,178 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     change.copy(changeId = Some(changeId))
   }
 
-  override def rejectChange(changeId: String): Future[Unit] = ???
+  override def rejectChange(registryId: String, changeId: String): Future[Boolean] = async[Future]{
+    // write mongodb query wich remove change with changeId
+    val collection = await(retrieveCollection)
+    val searchQuery = BSONDocument(
+      "registryId" -> registryId,
+      "changes" -> BSONDocument(
+        "$elemMatch" -> BSONDocument("changeId" -> changeId)
+      )
+    )
+    val updateQuery = BSONDocument(
+      "changes" -> BSONDocument(
+        "$pull" -> BSONDocument("changeId" -> changeId)
+      )
+    )
+    val updateResult = collection.findAndUpdate[BSONDocument,BSONDocument](searchQuery, updateQuery, fields=Some(TrustRegistryHeader.fields)).await
+    updateResult.result[TrustRegistryHeader].isDefined
+  }
 
-  override def approveChange(changeId: String): Future[Unit] = ???
+  override def approveChange(registryId: String, changeId: String): Future[Boolean] = async[Future] {
+    val collection = await(retrieveCollection)
+    val searchQuery = BSONDocument(
+      "registryId" -> registryId,
+      "changes" -> BSONDocument(
+        "$elemMatch" -> BSONDocument("changeId" -> changeId)
+      )
+    )
+    val updateQuery = BSONDocument(
+      "$set" -> BSONDocument("changes.$.accepted" -> true)
+    )
+    val updateResult = collection.update.one(searchQuery, updateQuery).await
+    updateResult.nModified == 1
+  }
 
-  override def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryDidEntriesDTO] = ???
+  override def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryDidEntriesDTO] = async[Future]{
+    val mongoQuery0 = BSONDocument("registryId" -> query.registryId)
+    val mongoQuery1 = query.did match
+      case Some(did) => mongoQuery0 ++ BSONDocument("changes.didChanges.did" -> did)
+      case None => mongoQuery0
+    val collection = retrieveCollection.await
+
+    var aggregateCommonQuery = List(
+      BSONDocument("$match" -> mongoQuery1),
+      BSONDocument("$unwind" -> "$changes"),
+      BSONDocument("$unwind" -> "$changes.didChanges"),
+    ) ++ (
+      query.did match
+        case Some(did) =>
+          List(
+            BSONDocument("$match" -> BSONDocument("changes.didChanges.did" -> did))
+          )
+        case None => List.empty
+      ) ++ List(
+      BSONDocument("$addFields" -> BSONDocument(
+        "accepted_changes" -> BSONDocument("$cond" -> BSONDocument(
+          "if" -> BSONDocument("$eq" -> BSONArray("$changes.accepted", true)),
+          "then" -> "$changes.didChanges",
+          "else" -> BSONNull
+        )),
+        "proposed_changes" -> BSONDocument("$cond" -> BSONDocument(
+          "if" -> BSONDocument("$eq" -> BSONArray("$changes.accepted", false)),
+          "then" -> "$changes",
+          "else" -> BSONNull
+        )),
+        "did" -> "$changes.didChanges.did",
+      )),
+      BSONDocument("$removeFields" -> "$changes"),
+    )
+    val qroupByStep = BSONDocument("$group" -> BSONDocument(
+      "_id" -> "$did",
+      "did" -> "$did",
+      "accepted_changes" -> BSONDocument("$push" -> BSONDocument(
+        "changeId" -> "$accepted_changes.changeId",
+        "status" -> "$accepted_changes.proposal",
+        "changeDate" -> "$accepted_changes.lastDate"
+      )),
+      "proposed_changes" -> BSONDocument("$push" -> BSONDocument(
+        "changeId" -> "$proposed_changes.changeId",
+        "status" -> "$proposed_changes.didChanges.proposal",
+        "changeDate" -> "$proposed_changes.lastDate"
+      ))
+    ))
+    val selectLastChangesStep = BSONDocument("$project" -> BSONDocument(
+      "did" -> 1,
+      "lastAcceptedChange" -> BSONDocument("$arrayElemAt" -> BSONArray(
+        BSONDocument(
+          "$slice" -> BSONArray(BSONDocument(
+            "$sortArray" -> BSONDocument(
+              "input" -> "$accepted_changes",
+              "sortBy" -> BSONDocument("changeDate" -> 1)
+            )
+          ), -1)
+        )
+      ),
+      "lastProposedChange" -> BSONDocument("$arrayElemAt" -> BSONArray(
+        BSONDocument(
+          "$slice" -> BSONArray(BSONDocument(
+            "$sortArray" -> BSONDocument(
+              "input" -> "$proposed_changes",
+              "sortBy" -> BSONDocument("changeDate" -> 1)
+            )
+          ), -1)
+        ),
+        -1
+      ))
+    )))
+    val finalProjStep = BSONDocument("$project" -> BSONDocument(
+      "_id" -> 0,
+      "did" -> 1,
+      "acceptedChange" -> "$lastAcceptedChange",
+      "proposedChange" -> "$lastProposedChange",
+      "status" -> BSONDocument("$cond" -> BSONDocument(
+        "if" -> BSONDocument("$eq" -> BSONArray("$lastAcceptedChange", BSONNull)),
+        "then" -> BSONDocument(
+          "$cond" -> BSONDocument(
+            "if" -> BSONDocument("$eq" -> BSONArray("$lastProposedChange.status", 1)),
+            "then" -> "Candidate",
+            "else" -> "WithdrawnCandidate"
+          )
+        ),
+        "else" -> BSONDocument(
+          "$cond" -> BSONDocument(
+            "if" -> BSONDocument("$eq" -> BSONArray("$lastAcceptedChange.status", 1)),
+            "then" -> BSONDocument(
+              "$cond" -> BSONDocument(
+                "if" -> BSONDocument("$eq" -> BSONArray("$lastProposedChange.status", -1)),
+                "then" -> "WithdrawnCandidate",
+                "else" -> "Active"
+              )),
+            "else" -> BSONDocument(
+              "$cond" -> BSONDocument(
+                "if" -> BSONDocument("$eq" -> BSONArray("$lastProposedChange.status", 1)),
+                "then" -> "Candidate",
+                "else" -> "Withdrawn"
+              )
+            )
+          )
+        )
+      ))
+    ))
+
+    aggregateCommonQuery = aggregateCommonQuery ++ List(qroupByStep, selectLastChangesStep, finalProjStep)
+
+    val countQuery = aggregateCommonQuery ++ List(
+      BSONDocument("$count" -> "count")
+    )
+
+    var dataQuery = aggregateCommonQuery ++
+      (query.orderBy match
+        case Some(fieldName) =>
+          List(BSONDocument("$sort" -> fieldName))
+        case None => List.empty
+      ) ++
+      List(
+        BSONDocument("$skip" -> query.offset.getOrElse(0)),
+        BSONDocument("$limit" -> query.limit.getOrElse(1000))
+      )
+
+
+    //collection.aggregatorContext[BSONDocument](aggregateCommonQuery).prepared.cursor[BSONDocument]().collect[List]().await
+
+    val entries = collection.aggregateWith[TrustRegistryDidEntryDTO](){ framework =>
+      dataQuery.map(framework.PipelineOperator(_))
+    }.collect[Seq]().await
+
+    val countEntries = collection.aggregateWith[CountResult](){ framework =>
+      countQuery.map(framework.PipelineOperator(_))
+    }.headOption.await
+    
+    val total = countEntries.map(_.count).getOrElse(0)
+    
+    TrustRegistryDidEntriesDTO(entries, total)
+  }
 
   override def queryDid(registryId: String, did: String): Future[Option[TrustRegistryDidEntryDTO]] = ???
 
@@ -129,7 +296,17 @@ object MongoDBTrustRegistryBackend {
              targetAddress: Option[String],
                                 )
 
-  given BSONDocumentHandler[TrustRegistryHeader] = Macros.handler[TrustRegistryHeader]
+  object TrustRegistryHeader {
+    given BSONDocumentHandler[TrustRegistryHeader] = Macros.handler[TrustRegistryHeader]
+    val fields = BSONDocument(
+      "registryId" -> BSONString("registryId"),
+      "name" -> BSONString("name"),
+      "network" -> BSONString("network"),
+      "subnetwork" -> BSONString("subnetwork"),
+      "targetAddress" -> BSONString("targetAddress"),
+    )
+  }
+
 
 
   case class TrustRegistryEntry(
@@ -172,9 +349,24 @@ object MongoDBTrustRegistryBackend {
 
 
   given BSONHandler[TrustRegistryEntryStatusDTO] = new BSONHandler[TrustRegistryEntryStatusDTO]:
-    override def readTry(bson: BSONValue): Try[TrustRegistryEntryStatusDTO] = ???
+    override def readTry(bson: BSONValue): Try[TrustRegistryEntryStatusDTO] = {
+      bson match {
+        case BSONString("Active") => Success(TrustRegistryEntryStatusDTO.Active)
+        case BSONString("Candidate") => Success(TrustRegistryEntryStatusDTO.Candidate)
+        case BSONString("Withdrawn") => Success(TrustRegistryEntryStatusDTO.Withdrawn)
+        case BSONString("WithdrawnCandidate") => Success(TrustRegistryEntryStatusDTO.WithdrawnCandidate)
+        case _ => Failure(new Exception(s"Invalid BSON type for TrustRegistryEntryStatusDTO (BSONString was extepted, we have) "))
+      }
+    }
 
-    override def writeTry(t: TrustRegistryEntryStatusDTO): Try[BSONValue] = ???
+    override def writeTry(t: TrustRegistryEntryStatusDTO): Try[BSONValue] = {
+      t match {
+        case TrustRegistryEntryStatusDTO.Active => Success(BSONString("Active"))
+        case TrustRegistryEntryStatusDTO.Candidate => Success(BSONString("Candidate"))
+        case TrustRegistryEntryStatusDTO.Withdrawn => Success(BSONString("Withdrawn"))
+        case TrustRegistryEntryStatusDTO.WithdrawnCandidate => Success(BSONString("WithdrawnCandidate"))
+      }
+    }
 
 
   given BSONDocumentHandler[TrustRegistryChangeDTO] = Macros.handler
@@ -182,5 +374,9 @@ object MongoDBTrustRegistryBackend {
   case class CountResult(count: Int)
 
   given BSONDocumentHandler[CountResult] = Macros.handler[CountResult]
+
+  given BSONDocumentHandler[TrustRegistryDidEntryDTO] = Macros.handler[TrustRegistryDidEntryDTO]
+  
+  given BSONDocumentHandler[TrustRegistryDidChangeDTO] = Macros.handler[TrustRegistryDidChangeDTO]
 
 }

@@ -48,7 +48,9 @@ lazy val server = project
                      "com.softwaremill.sttp.tapir" %% "tapir-sttp-stub-server" % tapirVersion % Test,
                      "org.scalatest" %% "scalatest" % "3.2.19" % Test,
                      "com.softwaremill.sttp.client3" %% "jsoniter" % "3.10.1" % Test,
-                     "org.scalameta" %%% "munit" % "1.0.4" % Test
+                     "org.scalameta" %%% "munit" % "1.0.4" % Test,
+                     "com.dimafeng" %% "testcontainers-scala-mongodb" % "0.41.8" % Test,
+                      "com.dimafeng" %% "testcontainers-scala-munit" % "0.41.8" % Test
                    )
                  )
 
