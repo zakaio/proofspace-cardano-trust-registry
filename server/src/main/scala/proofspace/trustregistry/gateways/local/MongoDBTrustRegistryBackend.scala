@@ -46,6 +46,8 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     TrustRegistryDTO(registryId, create.name, create.network, create.subnetwork, create.targetAdderss, now)
   }
 
+  override def listRegistries(query: TrustRegistryQueryDTO): Future[TrustRegistriesDTO] = ???
+
   override def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO] = async[Future]{
     if (change.addedDids.isEmpty && change.removedDids.isEmpty) {
       throw new Exception("Change must contain at least one DID")
@@ -250,13 +252,18 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     val countEntries = collection.aggregateWith[CountResult](){ framework =>
       countQuery.map(framework.PipelineOperator(_))
     }.headOption.await
-    
+
     val total = countEntries.map(_.count).getOrElse(0)
-    
+
     TrustRegistryDidEntriesDTO(entries, total)
   }
 
-  override def queryDid(registryId: String, did: String): Future[Option[TrustRegistryDidEntryDTO]] = ???
+  override def queryDid(registryId: String, did: String): Future[Option[TrustRegistryDidEntryDTO]] = {
+    val query = TrustRegistryEntryQueryDTO(registryId, did = Some(did))
+    queryEntries(query).map{ entries =>
+      entries.items.headOption
+    }
+  }
 
   private def collectionName = "trust_registries";
 
@@ -376,7 +383,7 @@ object MongoDBTrustRegistryBackend {
   given BSONDocumentHandler[CountResult] = Macros.handler[CountResult]
 
   given BSONDocumentHandler[TrustRegistryDidEntryDTO] = Macros.handler[TrustRegistryDidEntryDTO]
-  
+
   given BSONDocumentHandler[TrustRegistryDidChangeDTO] = Macros.handler[TrustRegistryDidChangeDTO]
 
 }

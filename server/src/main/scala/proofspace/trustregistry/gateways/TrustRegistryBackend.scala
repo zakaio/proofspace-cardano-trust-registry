@@ -10,6 +10,8 @@ trait TrustRegistryBackend {
   
   def name: String
   
+  def listRegistries(query: TrustRegistryQueryDTO): Future[TrustRegistriesDTO]
+  
   def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO]
   
   def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO]

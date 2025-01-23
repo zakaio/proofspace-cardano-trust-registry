@@ -3,7 +3,7 @@ package proofspace.trustregistry.fakes
 import org.slf4j.LoggerFactory
 import proofspace.trustregistry.dto.TrustRegistryEntryStatusDTO.Active
 import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.Add
-import proofspace.trustregistry.dto.{CreateTrustRegistryDTO, TrustRegistryChangeDTO, TrustRegistryDTO, TrustRegistryDidChangeDTO, TrustRegistryDidEntriesDTO, TrustRegistryDidEntryDTO, TrustRegistryEntryQueryDTO}
+import proofspace.trustregistry.dto.{CreateTrustRegistryDTO, TrustRegistriesDTO, TrustRegistryChangeDTO, TrustRegistryDTO, TrustRegistryDidChangeDTO, TrustRegistryDidEntriesDTO, TrustRegistryDidEntryDTO, TrustRegistryEntryQueryDTO, TrustRegistryQueryDTO}
 
 import scala.collection.mutable.Queue
 import scala.collection.mutable.Map as MutableMap
@@ -19,6 +19,21 @@ class FakeTrustRegistryBackend extends TrustRegistryBackend {
   val registries: TrieMap[String, FakeTrustRegistryBackend.InMemoryTrustRegistry] = TrieMap.empty
 
   override def name: String = "FakeTrustRegistryBackend"
+
+  override def listRegistries(query: TrustRegistryQueryDTO): Future[TrustRegistriesDTO] = {
+    val retval = registries.flatMap{
+      case (name, registry) =>
+        if (query.registryId.isDefined && query.registryId.get != name) {
+          None
+        } else if (query.name.isDefined && query.name.get != name) {
+          None
+        } else {
+          val now = LocalDateTime.now()
+          Some(TrustRegistryDTO(name, name, "fake", None, None, now))
+        }
+    }
+    Future.successful(TrustRegistriesDTO(retval.toSeq, retval.size))
+  }
 
   override def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO] = {
     registries.get(create.name) match
