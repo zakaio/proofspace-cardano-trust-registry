@@ -46,7 +46,20 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     TrustRegistryDTO(registryId, create.name, create.network, create.subnetwork, create.targetAdderss, now)
   }
 
-  override def listRegistries(query: TrustRegistryQueryDTO): Future[TrustRegistriesDTO] = ???
+  override def listRegistries(query: TrustRegistryQueryDTO): Future[TrustRegistriesDTO] = async[Future] {
+    val collection = await(retrieveCollection)
+    val mongoQuery0 = BSONDocument()
+    val mongoQuery1 = query.registryId match
+      case Some(registryId) => mongoQuery0 ++ BSONDocument("registryId" -> registryId)
+      case None => mongoQuery0
+    val mongoQuery = mongoQuery1   
+    val limit = query.limit.getOrElse(1000)
+    val offset = query.offset.getOrElse(0)
+    val registries = collection.find(mongoQuery).skip(offset).cursor[TrustRegistryHeader]().collect[List](limit).await
+    TrustRegistriesDTO(registries.map{ header =>
+      TrustRegistryDTO(header.registryId, header.name, header.network, header.subnetwork, header.targetAddress, LocalDateTime.now())
+    }, registries.size)
+  }
 
   override def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO] = async[Future]{
     if (change.addedDids.isEmpty && change.removedDids.isEmpty) {
