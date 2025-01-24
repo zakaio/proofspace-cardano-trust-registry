@@ -14,6 +14,8 @@ trait TrustRegistryBackend {
   
   def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO]
   
+  def removeRegistry(registryId: String): Future[Boolean]
+  
   def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO]
   
   def rejectChange(registryId: String, changeId: String): Future[Boolean]

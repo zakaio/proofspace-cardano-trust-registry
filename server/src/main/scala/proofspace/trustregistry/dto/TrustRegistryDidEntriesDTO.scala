@@ -55,7 +55,9 @@ case class TrustRegistryDidEntryDTO(
                                   status: TrustRegistryEntryStatusDTO,
                                   acceptedChange: Option[TrustRegistryDidChangeDTO],
                                   proposedChange: Option[TrustRegistryDidChangeDTO],
-                                )  {
+                                )
+
+object TrustRegistryDidEntryDTO {
 
   given JsonValueCodec[TrustRegistryDidEntryDTO] = JsonCodecMaker.make
 

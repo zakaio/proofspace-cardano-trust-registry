@@ -63,6 +63,12 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     }, registries.size)
   }
 
+  override def removeRegistry(registryId: String): Future[Boolean] = async[Future]{
+    val collection = retrieveCollection.await
+    val deleteResult = collection.delete.one(BSONDocument("registryId" -> registryId)).await
+    deleteResult.n == 1
+  }
+
   override def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO] = async[Future]{
     if (change.addedDids.isEmpty && change.removedDids.isEmpty) {
       throw new Exception("Change must contain at least one DID")

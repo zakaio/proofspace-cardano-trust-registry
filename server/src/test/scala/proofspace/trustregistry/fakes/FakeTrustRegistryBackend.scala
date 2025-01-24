@@ -44,6 +44,12 @@ class FakeTrustRegistryBackend extends TrustRegistryBackend {
         val now = LocalDateTime.now()
         Future.successful(TrustRegistryDTO(create.name, create.name, create.network, None, None, now))
   }
+  
+  override def removeRegistry(registryId: String): Future[Boolean] = {
+    registries.remove(registryId) match
+      case Some(_) => Future.successful(true)
+      case None => Future.successful(false)
+  }
 
   override def queryDid(registryId: String, did: String): Future[Option[TrustRegistryDidEntryDTO]] = {
     registries.get(registryId) match {
