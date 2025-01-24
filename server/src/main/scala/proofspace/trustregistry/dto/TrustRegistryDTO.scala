@@ -28,6 +28,12 @@ case class CreateTrustRegistryDTO(
                                    targetAdderss: Option[String],
                                  )
 
+object CreateTrustRegistryDTO {
+  
+  given JsonValueCodec[CreateTrustRegistryDTO] = JsonCodecMaker.make
+  
+}
+
 
 case class TrustRegistriesDTO(
                               items: Seq[TrustRegistryDTO],

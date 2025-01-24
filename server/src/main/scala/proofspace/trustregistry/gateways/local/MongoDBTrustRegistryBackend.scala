@@ -4,10 +4,11 @@ import com.github.rssh.appcontext.{AppContext, AppContextProvider}
 import cps.*
 import cps.monads.{*, given}
 import org.slf4j.LoggerFactory
+import proofspace.trustregistry.AppConfig
 import proofspace.trustregistry.dto.*
 import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.Add
 import proofspace.trustregistry.gateways.*
-import proofspace.trustregistry.services.MongoDBService
+import proofspace.trustregistry.services.{BlockchainAdapterService, MongoDBService}
 import reactivemongo.api.DB
 import reactivemongo.api.bson.*
 import reactivemongo.api.bson.collection.BSONCollection
@@ -19,10 +20,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.*
 
 /**
- * Local trust registry backend without blockchain backing.
- * All changes to the trust registry are applied immediatly without voting.
+ * Local trust registry backend.
+ * Blockchain backing is specifiied by BlockChainAdapterService,  which is used to create blockchain adapter
+ * for specific network.
  */
-class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppContextProvider[BlockChainLocalTrustRegistryAdapter]) extends TrustRegistryBackend {
+class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppContextProvider[AppConfig], AppContextProvider[BlockchainAdapterService]) extends TrustRegistryBackend {
 
   import MongoDBTrustRegistryBackend.{*, given}
   private val logger = LoggerFactory.getLogger(classOf[MongoDBTrustRegistryBackend])
@@ -30,12 +32,12 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
   override def name: String = "MongoDBTrustRegistryBackend"
 
   override def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO] = async[Future]{
-    val registryId = AppContext[BlockChainLocalTrustRegistryAdapter].createTrustRegistry(create).await
+    val blockchainAdapter = AppContext[BlockchainAdapterService].createBlockchainAdapter(create.network, create.subnetwork)
+    val registryId = blockchainAdapter.createTrustRegistry(create).await
     val entry = TrustRegistryEntry(registryId, create.name,
       create.network, create.subnetwork, create.targetAdderss,
       Seq.empty)
     val collection = await(retrieveCollection)
-    val bsonHandler = summon[BSONHandler[TrustRegistryEntry]]
     val insertResult = await(collection.insert.one(entry))
     if (insertResult.writeErrors.nonEmpty) {
       logger.error(s"Failed to insert trust registry entry: ${insertResult.writeErrors}")
@@ -52,7 +54,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     val mongoQuery1 = query.registryId match
       case Some(registryId) => mongoQuery0 ++ BSONDocument("registryId" -> registryId)
       case None => mongoQuery0
-    val mongoQuery = mongoQuery1   
+    val mongoQuery = mongoQuery1
     val limit = query.limit.getOrElse(1000)
     val offset = query.offset.getOrElse(0)
     val registries = collection.find(mongoQuery).skip(offset).cursor[TrustRegistryHeader]().collect[List](limit).await
@@ -68,7 +70,8 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     val collection = await(retrieveCollection)
     val optRegistryHeader = await(collection.find(BSONDocument("registryId" -> change.registryId)).one[TrustRegistryHeader])
     val registryHeader = optRegistryHeader.getOrElse(throw new Exception(s"Trust registry ${change.registryId} not found"))
-    val changeId = AppContext[BlockChainLocalTrustRegistryAdapter].createTrustRegistryChangeRequest(change).await
+    val blockchainAdapter = AppContext[BlockchainAdapterService].createBlockchainAdapter(registryHeader.network, registryHeader.subnetwork)
+    val changeId = blockchainAdapter.createTrustRegistryChangeRequest(change).await
     val didChanges = change.addedDids.map(did => TrustRegistryDidEntryInChange(did, Add))
       ++ change.removedDids.map(did => TrustRegistryDidEntryInChange(did, TrustRegistryProposalStatusDTO.Remove))
 
