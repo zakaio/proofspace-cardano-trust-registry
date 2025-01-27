@@ -9,6 +9,7 @@ import cps.*
 import cps.monads.{*, given}
 import org.apache.pekko.actor.{ActorSystem, Terminated}
 import org.apache.pekko.http.scaladsl.Http
+import org.slf4j.LoggerFactory
 import sttp.tapir.*
 import sttp.tapir.server.pekkohttp.{PekkoHttpServerInterpreter, PekkoHttpServerOptions}
 import proofspace.trustregistry.controllers.RegistryCrudAPI
@@ -21,6 +22,8 @@ import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
 class TrustRegistryServer {
 
+  private val logger = LoggerFactory.getLogger(classOf[TrustRegistryServer])
+
   private val startPromise = Promise[Boolean]()
   private val finishPromise = Promise[Boolean]()
   private val endPromise = Promise[Terminated]()
@@ -29,10 +32,7 @@ class TrustRegistryServer {
     given AppConfig = appConfig
     val mongoDBService = MongoDBService.create(appConfig).await
     given MongoDBService = mongoDBService
-    try
-      await(runWithDB)
-    finally
-      mongoDBService.close().await
+    await(runWithDB)
   }
 
   def finish(): Future[Unit] = {
@@ -80,12 +80,15 @@ class TrustRegistryServer {
 
     val binding = bindingFuture.await
 
-    val endFuture = finishPromise.future.transformWith {
-      case Success(_) =>
+    val endFuture = finishPromise.future.transformWith { finish =>
+      finish match
+        case Success(_) =>
+          logger.info("Shutting down server")
+        case Failure(ex) =>
+          logger.info(s"Failed to stop server: ${ex.getMessage}", ex)
+      AppContext[MongoDBService].close().flatMap { _ =>
         binding.unbind().flatMap(done => summon[ActorSystem].terminate())
-      case Failure(ex) =>
-        println(s"Failed to stop server: ${ex.getMessage}")
-        binding.unbind().flatMap(done => summon[ActorSystem].terminate())
+      }
     }
     endPromise.completeWith(endFuture)
 
