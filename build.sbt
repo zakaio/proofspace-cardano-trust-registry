@@ -1,5 +1,7 @@
 
 
+
+
 val commonSettings = Seq(
   scalaVersion := "3.6.2",
   organization := "id.proofspace",
@@ -35,6 +37,8 @@ val tapirVersion = "1.11.9"
 lazy val server = project
                  .in(file("server"))
                  .dependsOn(core.jvm)
+                 .enablePlugins(JavaAppPackaging)
+                 .enablePlugins(JDebPackaging)
                  .settings(commonSettings)
                  .settings(
                    name := "cardano-trustregistry-service",
@@ -59,6 +63,25 @@ lazy val server = project
                      "org.scalameta" %%% "munit" % "1.0.4" % Test,
                      "com.dimafeng" %% "testcontainers-scala-mongodb" % "0.41.8" % Test,
                       "com.dimafeng" %% "testcontainers-scala-munit" % "0.41.8" % Test
+                   ),
+                   Test / fork := true,
+                   Test / parallelExecution := false,
+                   Compile / doc / sources := Seq(),
+                   Compile / mappings := Seq(),
+                   packageDoc / mappings := Seq(),
+                   maintainer := "tech@proofspace.id",
+                   Debian / name := "proofspace-trustregistry-server",
+                   Debian / packageDescription := "Proofspace TrustRegisty Server",
+                   Debian / version := "0.0.1",
+                   debianPackageDependencies ++= Seq("java17-runtime-headless"),
+                   Debian / linuxPackageMappings ++= Seq(
+                     packageMapping( (sourceDirectory.value / "main" / "conf" / "proofspace-trustregistry.conf" )
+                       -> "/etc/proofspace-trustregistry/config.json").withConfig(),
+                     packageMapping( (sourceDirectory.value / "main" / "deb" / "proofspace-trustregistry.service")
+                       -> "/etc/systemd/system/proofspace-trustregistry.service" ).withPerms("0644"),
+                     packageMapping((sourceDirectory.value / "main" / "conf" / "logback.xml")
+                       -> "/etc/proofspace-trustregistry/logback.xml").withConfig(),
+                     packageTemplateMapping("/var/log/proofspace-trustregistry/")().withUser("zaka-runner").withGroup("zaka-runner"),
                    )
                  )
 

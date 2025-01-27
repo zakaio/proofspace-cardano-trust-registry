@@ -4,13 +4,13 @@ import metaconfig.*
 import org.slf4j.LoggerFactory
 
 case class CardanoConfig(
-        blockfrost: Map[String, CardanoNetworkConfig]
+                          subnetworks: Map[String, CardanoNetworkConfig]
                         )
 
 object CardanoConfig {
 
   lazy val default = CardanoConfig(
-    blockfrost = Map(
+    subnetworks = Map(
       "mainnet" -> CardanoNetworkConfig(
         blockfrostUrl = "https://cardano-mainnet.blockfrost.io",
         blockfrostProjectId = "project_id",
@@ -53,7 +53,7 @@ object CardanoNetworkConfig {
 case class AppConfig(
                     mongoUri: String,
                     mongoDbName: String,
-                    cardanoConfig: CardanoConfig
+                    cardano: CardanoConfig
                     )
 
 case class CmdLineConfig(
