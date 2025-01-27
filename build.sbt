@@ -41,7 +41,7 @@ lazy val server = project
                  .enablePlugins(JDebPackaging)
                  .settings(commonSettings)
                  .settings(
-                   name := "cardano-trustregistry-service",
+                   name := "proofspace-trustregistry",
                    libraryDependencies ++= Seq(
                      "com.bloxbean.cardano" % "cardano-client-lib" % "0.6.3",
                      "com.bloxbean.cardano" % "cardano-client-backend-blockfrost" % "0.6.3",

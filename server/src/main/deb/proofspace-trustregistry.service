@@ -8,7 +8,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=zaka-runner
-ExecStart=/usr/bin/proofspace-trustregistry-server -Dlogback.configurationFile=/etc/proofspace-trustregistry/logback.xml --config /etc/proofspace-trustregistry/config.json
+ExecStart=/usr/bin/proofspace-trustregistry -Dlogback.configurationFile=/etc/proofspace-trustregistry/logback.xml --config /etc/proofspace-trustregistry/config.json
 
 [Install]
 WantedBy=multi-user.target

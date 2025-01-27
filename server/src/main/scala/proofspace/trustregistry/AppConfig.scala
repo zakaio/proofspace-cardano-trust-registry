@@ -82,7 +82,7 @@ object AppConfig {
   lazy val default = AppConfig(
     mongoUri = "mongodb://localhost:27017",
     mongoDbName = "trustregistry",
-    cardanoConfig = CardanoConfig.default
+    cardano = CardanoConfig.default
   )
 
   implicit lazy val surface: generic.Surface[AppConfig] = generic.deriveSurface[AppConfig]
