@@ -1,0 +1,5 @@
+#!/bin/sh
+systemctl daemon-reload
+echo "restarting proofspace-trustregistry"
+service proofspace-trustregistry stop
+service proofspace-trustregistry start

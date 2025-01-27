@@ -1,0 +1,14 @@
+[Unit]
+Description=ProofSpace Trust Registry
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=zaka-runner
+ExecStart=/usr/bin/proofspace-trustregistry-server -Dlogback.configurationFile=/etc/proofspace-trustregistry/logback.xml --config /etc/proofspace-trustregistry/config.json
+
+[Install]
+WantedBy=multi-user.target
