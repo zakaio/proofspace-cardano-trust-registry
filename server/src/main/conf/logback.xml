@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration>
+
+<configuration>
+    <import class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"/>
+    <import class="ch.qos.logback.core.ConsoleAppender"/>
+    <import class="ch.qos.logback.core.FileAppender"/>
+    <import class="ch.qos.logback.core.rolling.RollingFileAppender"/>
+    <property name="LOG_ROOT" value="/var/log/proofspace-trustregistry" />
+
+    <appender name="STDOUT" class="ConsoleAppender">
+        <encoder class="PatternLayoutEncoder">
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -%kvp- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="LOG" class="RollingFileAppender">
+	<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+		<fileNamePattern>${LOG_ROOT}/proofspace-trustregistry.%d{yyyy-MM-dd}.log</fileNamePattern>
+		<maxHistory>90</maxHistory>
+	</rollingPolicy>
+        <encoder class="PatternLayoutEncoder">
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -%kvp- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="proofspace.trustregistry" level="TRACE" />
+    <logger name="reactivemongo" level="INFO" />
+
+
+    <root level="info">
+       <appender-ref ref="LOG"/>
+       <!--	    
+        <appender-ref ref="STDOUT"/>
+       -->
+    </root>
+</configuration>
