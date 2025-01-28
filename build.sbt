@@ -59,10 +59,12 @@ lazy val server = project
                      "org.scalameta" %% "metaconfig-typesafe-config" % "0.14.0",
                      "com.softwaremill.sttp.tapir" %% "tapir-sttp-stub-server" % tapirVersion % Test,
                      "org.scalatest" %% "scalatest" % "3.2.19" % Test,
-                     "com.softwaremill.sttp.client3" %% "jsoniter" % "3.10.1" % Test,
+                     "com.softwaremill.sttp.client3" %% "jsoniter" % "3.10.2" % Test,
+                     "com.softwaremill.sttp.client3" %% "pekko-http-backend" % "3.10.2" % Test,
                      "org.scalameta" %%% "munit" % "1.0.4" % Test,
                      "com.dimafeng" %% "testcontainers-scala-mongodb" % "0.41.8" % Test,
-                      "com.dimafeng" %% "testcontainers-scala-munit" % "0.41.8" % Test
+                      "com.dimafeng" %% "testcontainers-scala-munit" % "0.41.8" % Test,
+
                    ),
                    Test / fork := true,
                    Test / parallelExecution := false,

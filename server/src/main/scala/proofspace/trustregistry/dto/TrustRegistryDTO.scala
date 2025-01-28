@@ -23,15 +23,15 @@ object TrustRegistryDTO {
 case class CreateTrustRegistryDTO(
                                    name: String,
                                    network: String,
-                                   subnetwork: Option[String],
-                                   didPrefix: Option[String],
-                                   targetAdderss: Option[String],
+                                   subnetwork: Option[String] = None,
+                                   didPrefix: Option[String] = None,
+                                   targetAdderss: Option[String] = None,
                                  )
 
 object CreateTrustRegistryDTO {
-  
+
   given JsonValueCodec[CreateTrustRegistryDTO] = JsonCodecMaker.make
-  
+
 }
 
 

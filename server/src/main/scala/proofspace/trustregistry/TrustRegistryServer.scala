@@ -67,14 +67,14 @@ class TrustRegistryServer {
 
     val routes = PekkoHttpServerInterpreter(serverOptions).toRoute(endpoints ++ swaggerEndpoints)
 
-    val bindingFuture = Http().newServerAt("localhost", 8080).bindFlow(routes)
+    val bindingFuture = Http().newServerAt(summon[AppConfig].host, summon[AppConfig].port).bindFlow(routes)
 
     bindingFuture.onComplete {
       case Success(binding) =>
-        println(s"Server started at ${binding.localAddress}")
+        logger.info(s"Server started at ${binding.localAddress} ")
         startPromise.success(true)
       case Failure(ex) =>
-        println(s"Failed to start server: ${ex.getMessage}")
+        logger.error(s"Failed to start server: ${ex.getMessage}", ex)
         startPromise.failure(ex)
     }
 

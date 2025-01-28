@@ -53,7 +53,10 @@ object CardanoNetworkConfig {
 case class AppConfig(
                     mongoUri: String,
                     mongoDbName: String,
-                    cardano: CardanoConfig
+                    cardano: CardanoConfig,
+                    host: String = "localhost",
+                    port: Int = 4612,
+                    proofspaceApi: String = "https://test.proofspace.id/zaka"
                     )
 
 case class CmdLineConfig(
