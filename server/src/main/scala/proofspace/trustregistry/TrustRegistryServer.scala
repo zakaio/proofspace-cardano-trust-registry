@@ -47,8 +47,10 @@ class TrustRegistryServer {
   private def runWithDB(using AppConfig, MongoDBService): Future[Boolean] = async[Future]{
     given AppContext.Cache = AppContext.newCache
 
-    given TrustRegistryBackend = MongoDBTrustRegistryBackend()
+    given MongoDBTrustRegistryBackend = MongoDBTrustRegistryBackend()
 
+    val indexesCreated = summon[MongoDBTrustRegistryBackend].checkIndexes.await
+    
     given ActorSystem = ActorSystem()
 
 

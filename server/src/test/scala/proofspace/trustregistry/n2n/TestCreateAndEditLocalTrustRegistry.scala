@@ -9,6 +9,7 @@ import com.dimafeng.testcontainers.munit.TestContainerForAll
 import munit.FutureFixture
 import proofspace.trustregistry.*
 import proofspace.trustregistry.dto.*
+import proofspace.trustregistry.util.JSoniterDefaultCodecs.{*, given}
 import sttp.capabilities.WebSockets
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.client3.*
@@ -18,7 +19,7 @@ import sttp.client3.pekkohttp.*
 
 class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContainerForAll {
 
-  override val containerDef: ContainerDef = MongoDBContainer.Def()
+  override val containerDef: ContainerDef = MongoDBContainer.Def("mongo:8.0")
 
 
 
@@ -112,8 +113,65 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
       val response = await(sttpBackend.send(createTrustRegistryRequest))
       println(s"response=${response}")
       assert(response.code.isSuccess)
+
+      // now generate 100 DIDs and add them to the registry
+      val dids = (1 to 100).map{ i => s"did:example:${i}" }
+      val changeRequest = sttp.client3.basicRequest.post(
+          uri"http://localhost:${appConfig.port}/trust-registry/test/change")
+        .body(
+          TrustRegistryChangeDTO(
+            registryId = "local:test",
+            changeId = None,
+            addedDids = dids,
+            removedDids = Seq.empty
+          )
+        ).response(asJson[TrustRegistryChangeDTO])
+      val changeResponse = await(sttpBackend.send(changeRequest))
+      println(s"changeResponse=${changeResponse}")
+      assert(changeResponse.code.isSuccess)
+      val changeId = changeResponse.body match
+        case Right(change) => change.changeId.getOrElse(
+          throw new RuntimeException("Failed to get changeId from response")
+        )
+        case Left(error) => throw new Exception(s"Failed to parse response to change request: ${error}")
+
+      // now query the registry for the DIDs
+      val entryQuery = TrustRegistryEntryQueryDTO(
+        registryId = "local:test",
+        limit = Some(1000)
+      )
+      val queryRequest = sttp.client3.basicRequest.get(
+          uri"http://localhost:${appConfig.port}/trust-registry/${entryQuery.registryId}/entries?registryId=${entryQuery.registryId}&limit=${entryQuery.limit}"
+      ).response(asJson[TrustRegistryDidEntriesDTO])
+      val queryResponse = await(sttpBackend.send(queryRequest))
+      println(s"queryResponse=${queryResponse}")
+      assert(queryResponse.code.isSuccess)
+      val entries = queryResponse.body match
+        case Right(entries) => entries
+        case Left(error) => throw new Exception(s"Failed to parse response: ${error}")
+      assert(entries.items.size == 100)
+      assert(entries.itemsTotal == 100)
+
+      val item59 = entries.items.find(_.did == "did:example:59")
+      assert(item59.isDefined)
+      assert(item59.get.proposedChange.isDefined)
+      assert(item59.get.proposedChange.get.status == TrustRegistryProposalStatusDTO.Add)
+
+      //naw accept change
+      val approveChangeRequest = sttp.client3.basicRequest.post(
+          uri"http://localhost:${appConfig.port}/trust-registry/test/change/${changeId}/approve")
+        .response(asJson[Boolean])
+
+      val approveChangeResponse = await(sttpBackend.send(approveChangeRequest))
+      println(s"approveChangeResponse=${approveChangeResponse}")
+      assert(approveChangeResponse.code.isSuccess)
+
+      val queryResponse2 = await(sttpBackend.send(queryRequest))
+      println(s"queryResponse2=${queryResponse2}")
     }
     f
   }
+
+
 
 }

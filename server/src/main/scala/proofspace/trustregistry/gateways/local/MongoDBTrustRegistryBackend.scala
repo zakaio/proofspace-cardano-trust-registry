@@ -4,6 +4,7 @@ import com.github.rssh.appcontext.{AppContext, AppContextProvider}
 import cps.*
 import cps.monads.{*, given}
 import org.slf4j.LoggerFactory
+import play.api.libs.json.Json
 import proofspace.trustregistry.AppConfig
 import proofspace.trustregistry.dto.*
 import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.Add
@@ -11,7 +12,9 @@ import proofspace.trustregistry.gateways.*
 import proofspace.trustregistry.services.{BlockchainAdapterService, MongoDBService}
 import reactivemongo.api.DB
 import reactivemongo.api.bson.*
+import reactivemongo.api.bson.BSONDocument.pretty
 import reactivemongo.api.bson.collection.BSONCollection
+import reactivemongo.play.json.compat.{*, given}
 import reactivemongo.api.indexes.{Index, IndexType}
 
 import java.time.LocalDateTime
@@ -32,6 +35,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
   override def name: String = "MongoDBTrustRegistryBackend"
 
   override def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO] = async[Future]{
+    logger.debug(s"Creating trust registry ${create.name}")
     val blockchainAdapter = AppContext[BlockchainAdapterService].createBlockchainAdapter(create.network, create.subnetwork)
     val registryId = blockchainAdapter.createTrustRegistry(create).await
     val entry = TrustRegistryEntry(registryId, create.name,
@@ -141,24 +145,28 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
   }
 
   override def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryDidEntriesDTO] = async[Future]{
-    val mongoQuery0 = BSONDocument("registryId" -> query.registryId)
-    val mongoQuery1 = query.did match
-      case Some(did) => mongoQuery0 ++ BSONDocument("changes.didChanges.did" -> did)
-      case None => mongoQuery0
+    val matchQuery0 = BSONDocument("registryId" -> query.registryId)
+    val matchQuery1 = query.did match
+      case Some(did) => matchQuery0 ++ BSONDocument("changes.didChanges.did" -> did)
+      case None => matchQuery0
     val collection = retrieveCollection.await
 
-    var aggregateCommonQuery = List(
-      BSONDocument("$match" -> mongoQuery1),
+    val matchUnwindStages = List(
+      BSONDocument("$match" -> matchQuery1),
       BSONDocument("$unwind" -> "$changes"),
       BSONDocument("$unwind" -> "$changes.didChanges"),
-    ) ++ (
+    )
+
+    val didOptStages = (
       query.did match
         case Some(did) =>
           List(
             BSONDocument("$match" -> BSONDocument("changes.didChanges.did" -> did))
           )
         case None => List.empty
-      ) ++ List(
+      )
+
+    val splitAcceptProposedChanges =  List(
       BSONDocument("$addFields" -> BSONDocument(
         "accepted_changes" -> BSONDocument("$cond" -> BSONDocument(
           "if" -> BSONDocument("$eq" -> BSONArray("$changes.accepted", true)),
@@ -172,11 +180,10 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
         )),
         "did" -> "$changes.didChanges.did",
       )),
-      BSONDocument("$removeFields" -> "$changes"),
+      BSONDocument("$unset" -> "changes"),
     )
-    val qroupByStep = BSONDocument("$group" -> BSONDocument(
+    val groupByStep = BSONDocument("$group" -> BSONDocument(
       "_id" -> "$did",
-      "did" -> "$did",
       "accepted_changes" -> BSONDocument("$push" -> BSONDocument(
         "changeId" -> "$accepted_changes.changeId",
         "status" -> "$accepted_changes.proposal",
@@ -188,8 +195,8 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
         "changeDate" -> "$proposed_changes.lastDate"
       ))
     ))
-    val selectLastChangesStep = BSONDocument("$project" -> BSONDocument(
-      "did" -> 1,
+    val selectLastChangesStep = BSONDocument("$addFields" -> BSONDocument(
+      "did" -> "$_id",
       "lastAcceptedChange" -> BSONDocument("$arrayElemAt" -> BSONArray(
         BSONDocument(
           "$slice" -> BSONArray(BSONDocument(
@@ -198,8 +205,8 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
               "sortBy" -> BSONDocument("changeDate" -> 1)
             )
           ), -1)
-        )
-      ),
+        ), -1
+      )),
       "lastProposedChange" -> BSONDocument("$arrayElemAt" -> BSONArray(
         BSONDocument(
           "$slice" -> BSONArray(BSONDocument(
@@ -208,17 +215,33 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
               "sortBy" -> BSONDocument("changeDate" -> 1)
             )
           ), -1)
-        ),
-        -1
+        ), -1))
+    ))
+
+    def opZeroField(name:String): BSONDocument =
+      BSONDocument("$eq" -> BSONArray(
+        BSONDocument("$size" -> BSONDocument("$objectToArray" -> s"$$$name")),
+        0,
       ))
-    )))
+
+    def removeIfZero(name:String): BSONDocument =
+      BSONDocument(
+        "$cond" -> BSONDocument(
+          "if" -> opZeroField(name),
+          "then" -> "$$REMOVE",
+          "else" -> s"$$$name"
+        )
+      )
+
     val finalProjStep = BSONDocument("$project" -> BSONDocument(
       "_id" -> 0,
       "did" -> 1,
-      "acceptedChange" -> "$lastAcceptedChange",
-      "proposedChange" -> "$lastProposedChange",
+      "acceptedChange" -> removeIfZero("lastAcceptedChange"),
+      "proposedChange" -> removeIfZero("lastProposedChange"),
+      "accZero" -> opZeroField("lastAcceptedChange"),
+      "propZero" -> opZeroField("lastProposedChange"),
       "status" -> BSONDocument("$cond" -> BSONDocument(
-        "if" -> BSONDocument("$eq" -> BSONArray("$lastAcceptedChange", BSONNull)),
+        "if" -> opZeroField("lastAcceptedChange"),
         "then" -> BSONDocument(
           "$cond" -> BSONDocument(
             "if" -> BSONDocument("$eq" -> BSONArray("$lastProposedChange.status", 1)),
@@ -247,7 +270,8 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
       ))
     ))
 
-    aggregateCommonQuery = aggregateCommonQuery ++ List(qroupByStep, selectLastChangesStep, finalProjStep)
+    val aggregateCommonQuery = matchUnwindStages ++ didOptStages ++ splitAcceptProposedChanges
+      ++ List(groupByStep,  selectLastChangesStep , finalProjStep )
 
     val countQuery = aggregateCommonQuery ++ List(
       BSONDocument("$count" -> "count")
@@ -265,11 +289,17 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
       )
 
 
-    //collection.aggregatorContext[BSONDocument](aggregateCommonQuery).prepared.cursor[BSONDocument]().collect[List]().await
+    //val entries1 = collection.aggregateWith[BSONDocument]() { framework =>
+    //  (matchUnwindStages ++ didOptStages ++ splitAcceptProposedChanges
+    //    ++ List(groupByStep, selectLastChangesStep, finalProjStep)).map(framework.PipelineOperator(_))
+    //}.collect[Seq]().await
+    //println(s"entries1=${entries1.map(e => pretty(e))}")
+
 
     val entries = collection.aggregateWith[TrustRegistryDidEntryDTO](){ framework =>
       dataQuery.map(framework.PipelineOperator(_))
     }.collect[Seq]().await
+
 
     val countEntries = collection.aggregateWith[CountResult](){ framework =>
       countQuery.map(framework.PipelineOperator(_))
@@ -294,7 +324,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
       db.collection[BSONCollection](collectionName)
   }
 
-  protected def checkIndexes(db: DB): Future[Boolean] = async[Future] {
+  def checkIndexes: Future[Boolean] = async[Future] {
     val collection = retrieveCollection.await
     val acceptedDidChanges = Index(Seq("accepted.didChanges.did" -> IndexType.Ascending))
     val ensureAcceptedDidChanges = await(collection.indexesManager.ensure(acceptedDidChanges))
