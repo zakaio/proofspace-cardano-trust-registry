@@ -15,6 +15,7 @@ import sttp.capabilities.pekko.PekkoStreams
 import sttp.client3.*
 import sttp.client3.jsoniter.*
 import sttp.client3.pekkohttp.*
+import sttp.model.StatusCode
 
 
 class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContainerForAll {
@@ -50,6 +51,7 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
     override def apply(): Future[AppConfig] = appConfigPromise.future
 
     override def afterAll(): Future[Unit] = {
+      println("TrustRegistryFixture.afterAll")
       super.afterAll().flatMap { _ =>
         trustRegistryPromise.future.flatMap { trustRegistryServer =>
           trustRegistryServer.finish().map(_ => ())
@@ -179,6 +181,99 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
       assert(item59_2.get.acceptedChange.isDefined)
       assert(item59_2.get.acceptedChange.get.status == TrustRegistryProposalStatusDTO.Add)
       assert(item59_2.get.proposedChange.isEmpty)
+
+    }
+    f
+  }
+
+  test("submit and reject change") {
+    val f = async[Future] {
+      val appConfig = await(serverFixture())
+      val sttpBackend = sttpBackendFixture()
+      val createTrustRegistryRequest = sttp.client3.basicRequest
+        .post(uri"http://localhost:${appConfig.port}/trust-registry")
+        .body(
+          CreateTrustRegistryDTO(
+            name = "test",
+            network = "local",
+          )
+        )
+      val response = await(sttpBackend.send(createTrustRegistryRequest))
+      println(s"response=${response}")
+      assert(response.code.isSuccess)
+
+      // now generate 100 DIDs and add them to the registry
+      val dids = (1 to 10).map { i => s"did:example:${100+i}" }
+      val changeRequest = sttp.client3.basicRequest.post(
+          uri"http://localhost:${appConfig.port}/trust-registry/test/change")
+        .body(
+          TrustRegistryChangeDTO(
+            registryId = "local:test",
+            changeId = None,
+            addedDids = dids,
+            removedDids = Seq.empty
+          )
+        ).response(asJson[TrustRegistryChangeDTO])
+      val changeResponse = await(sttpBackend.send(changeRequest))
+      println(s"changeResponse=${changeResponse}")
+      assert(changeResponse.code.isSuccess)
+      val changeId = changeResponse.body match
+        case Right(change) => change.changeId.getOrElse(
+          throw new RuntimeException("Failed to get changeId from response")
+        )
+        case Left(error) => throw new Exception(s"Failed to parse response to change request: ${error}")
+
+      val registryId = "local:test"
+      // now query the registry for the DIDs
+      val entryQuery = TrustRegistryEntryQueryDTO(
+        registryId = registryId,
+        limit = Some(1000)
+      )
+      val queryRequest = sttp.client3.basicRequest.get(
+        uri"http://localhost:${appConfig.port}/trust-registry/${entryQuery.registryId}/entries?registryId=${entryQuery.registryId}&limit=${entryQuery.limit}"
+      ).response(asJson[TrustRegistryDidEntriesDTO])
+      val queryResponse = await(sttpBackend.send(queryRequest))
+      println(s"queryResponse=${queryResponse}")
+      assert(queryResponse.code.isSuccess)
+      val entries = queryResponse.body match
+        case Right(entries) => entries
+        case Left(error) => throw new Exception(s"Failed to parse query response: ${error}")
+      assert(entries.items.size > 0)
+
+      val rejectChange = sttp.client3.basicRequest.post(
+          uri"http://localhost:${appConfig.port}/trust-registry/${registryId}/change/${changeId}/reject")
+        .response(asJson[Boolean])
+
+      val item109_1 = entries.items.find(_.did == "did:example:109")
+      assert(item109_1.isDefined)
+
+      val didQuery = TrustRegistryEntryQueryDTO(
+        registryId = registryId,
+        did = Some("did:example:109")
+      )
+
+      val rejectChangeResponse = await(sttpBackend.send(rejectChange))
+      println(s"rejectChangeResponse=${rejectChangeResponse}")
+      assert(rejectChangeResponse.code.isSuccess)
+
+      val didQueryRequest = sttp.client3.basicRequest.get(
+        uri"http://localhost:${appConfig.port}/trust-registry/${didQuery.registryId}/did/${didQuery.did.get}"
+      ).response(asJson[Option[TrustRegistryDidEntryDTO]])
+
+      val queryResponse2 = await(sttpBackend.send(didQueryRequest))
+      println(s"queryResponse2=${queryResponse2}")
+      assert(queryResponse2.code == StatusCode.NotFound)
+
+      val didQuery83 = TrustRegistryEntryQueryDTO(
+        registryId = registryId,
+        did = Some("did:example:83")
+      )
+      val queryRequest3 = sttp.client3.basicRequest.get(
+        uri"http://localhost:${appConfig.port}/trust-registry/${didQuery83.registryId}/did/${didQuery83.did.get}"
+      ).response(asJson[Option[TrustRegistryDidEntryDTO]])
+      val queryResponse3 = await(sttpBackend.send(queryRequest3))
+      println(s"queryResponse3=${queryResponse3}")  
+      
 
     }
     f
