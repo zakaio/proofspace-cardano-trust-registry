@@ -98,7 +98,7 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
     );
   }
 
-  test("create and local trust registry") {
+  test("create add itens to local trust registry") {
     val f = async[Future] {
        val appConfig = await(serverFixture())
        val sttpBackend = sttpBackendFixture()
@@ -135,9 +135,10 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
         )
         case Left(error) => throw new Exception(s"Failed to parse response to change request: ${error}")
 
+      val registryId = "local:test"
       // now query the registry for the DIDs
       val entryQuery = TrustRegistryEntryQueryDTO(
-        registryId = "local:test",
+        registryId = registryId,
         limit = Some(1000)
       )
       val queryRequest = sttp.client3.basicRequest.get(
@@ -159,7 +160,7 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
 
       //naw accept change
       val approveChangeRequest = sttp.client3.basicRequest.post(
-          uri"http://localhost:${appConfig.port}/trust-registry/test/change/${changeId}/approve")
+          uri"http://localhost:${appConfig.port}/trust-registry/${registryId}/change/${changeId}/approve")
         .response(asJson[Boolean])
 
       val approveChangeResponse = await(sttpBackend.send(approveChangeRequest))
@@ -168,6 +169,17 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
 
       val queryResponse2 = await(sttpBackend.send(queryRequest))
       println(s"queryResponse2=${queryResponse2}")
+
+      val entries2 = queryResponse2.body match
+        case Right(entries) => entries
+        case Left(error) => throw new Exception(s"Failed to parse response: ${error}")
+
+      val item59_2 = entries2.items.find(_.did == "did:example:59")
+      assert(item59_2.isDefined)
+      assert(item59_2.get.acceptedChange.isDefined)
+      assert(item59_2.get.acceptedChange.get.status == TrustRegistryProposalStatusDTO.Add)
+      assert(item59_2.get.proposedChange.isEmpty)
+
     }
     f
   }

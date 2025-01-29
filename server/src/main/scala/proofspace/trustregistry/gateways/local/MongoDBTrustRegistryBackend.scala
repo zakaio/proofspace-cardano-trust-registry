@@ -11,7 +11,7 @@ import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.Add
 import proofspace.trustregistry.gateways.*
 import proofspace.trustregistry.services.{BlockchainAdapterService, MongoDBService}
 import reactivemongo.api.DB
-import reactivemongo.api.bson.*
+import reactivemongo.api.bson.{BSONValue, *}
 import reactivemongo.api.bson.BSONDocument.pretty
 import reactivemongo.api.bson.collection.BSONCollection
 import reactivemongo.play.json.compat.{*, given}
@@ -140,8 +140,31 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     val updateQuery = BSONDocument(
       "$set" -> BSONDocument("changes.$.accepted" -> true)
     )
-    val updateResult = collection.update.one(searchQuery, updateQuery).await
-    updateResult.nModified == 1
+    //val arrayFilter = BSONDocument("element" -> BSONDocument("$eq" -> BSONArray(List("$changeId",changeId))))
+    println(s"update seqrch Query: ${pretty(searchQuery)}")
+    //val updateResult = collection.findAndUpdate(searchQuery, updateQuery,
+    //   arrayFilters=Seq(arrayFilter), fetchNewObject = true).await
+    val updateModifier = collection.updateModifier(
+      BSONDocument("$set" -> BSONDocument("changes.$.accepted" -> true)),
+      fetchNewObject = true,
+
+    )
+    //val updateResult = collection.findAndModify(searchQuery, updateModifier,   fetchNewObject = true).await
+    val updateResult = collection.update(ordered = false).one(searchQuery, updateQuery).await
+    //val cl1 = collection.runCommand(BSONDocument("findAndModify" -> collectionName, "query" -> searchQuery, "update" -> updateQuery)).await
+
+    //val updateResult = collection.runCommand(
+
+    //)
+
+    println(s"updateResult.value=${updateResult}")
+
+    val entries = collection.find(searchQuery).cursor[BSONDocument]().collect[List]().await
+    println(s"after update: entries=${entries.map(x => pretty(x))}")
+    // now get value from updateResult and check if it is defined
+
+
+    updateResult.n == 1
   }
 
   override def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryDidEntriesDTO] = async[Future]{
@@ -170,7 +193,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
       BSONDocument("$addFields" -> BSONDocument(
         "accepted_changes" -> BSONDocument("$cond" -> BSONDocument(
           "if" -> BSONDocument("$eq" -> BSONArray("$changes.accepted", true)),
-          "then" -> "$changes.didChanges",
+          "then" -> "$changes",
           "else" -> BSONNull
         )),
         "proposed_changes" -> BSONDocument("$cond" -> BSONDocument(
@@ -186,7 +209,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
       "_id" -> "$did",
       "accepted_changes" -> BSONDocument("$push" -> BSONDocument(
         "changeId" -> "$accepted_changes.changeId",
-        "status" -> "$accepted_changes.proposal",
+        "status" -> "$accepted_changes.didChanges.proposal",
         "changeDate" -> "$accepted_changes.lastDate"
       )),
       "proposed_changes" -> BSONDocument("$push" -> BSONDocument(
@@ -291,7 +314,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
 
     //val entries1 = collection.aggregateWith[BSONDocument]() { framework =>
     //  (matchUnwindStages ++ didOptStages ++ splitAcceptProposedChanges
-    //    ++ List(groupByStep, selectLastChangesStep, finalProjStep)).map(framework.PipelineOperator(_))
+    //     ++ List(groupByStep, selectLastChangesStep , finalProjStep ) ).map(framework.PipelineOperator(_))
     //}.collect[Seq]().await
     //println(s"entries1=${entries1.map(e => pretty(e))}")
 
