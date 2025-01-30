@@ -2,11 +2,20 @@ package proofspace.trustregistry.services
 
 import com.github.rssh.appcontext.*
 import proofspace.trustregistry.AppConfig
+import proofspace.trustregistry.dto.{NetworkChoiceDTO, NetworkChoiceItemDTO}
 import proofspace.trustregistry.gateways.cardano.CardanoLocalTrustRegistryAdapter
 import proofspace.trustregistry.gateways.local.{BlockChainLocalTrustRegistryAdapter, EmptyBlockchainLocalTrustRegistryAdapter}
 
 class BlockchainAdapterService(using AppContextProvider[AppConfig]) {
 
+  def supportedNetworks: NetworkChoiceDTO = {
+    val appConfig = AppContext[AppConfig]
+    NetworkChoiceDTO(Seq(
+       NetworkChoiceItemDTO("local", Seq()),
+       NetworkChoiceItemDTO("cardano", appConfig.cardano.subnetworks.keys.toSeq)
+    ))
+  }
+  
   def createBlockchainAdapter(network: String, subnetwork:Option[String]): BlockChainLocalTrustRegistryAdapter = {
     network match
       case "local" => new EmptyBlockchainLocalTrustRegistryAdapter()

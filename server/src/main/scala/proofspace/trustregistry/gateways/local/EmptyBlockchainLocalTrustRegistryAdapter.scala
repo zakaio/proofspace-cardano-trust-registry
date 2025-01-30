@@ -14,5 +14,10 @@ class EmptyBlockchainLocalTrustRegistryAdapter extends BlockChainLocalTrustRegis
   override def createTrustRegistryChangeRequest(trustRegistryChangeDTO: TrustRegistryChangeDTO): Future[String] = {
     Future.successful(trustRegistryChangeDTO.changeId.getOrElse(java.util.UUID.randomUUID().toString))
   }
+
+  def monitorInputTransactions(addresses: List[String], listener: BlockChainAddressListener): Future[Unit] = {
+    Future.successful(())
+  }
+  
   
 }

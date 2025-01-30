@@ -9,9 +9,10 @@ import com.github.rssh.appcontext.*
 import proofspace.trustregistry.AppConfig
 import proofspace.trustregistry.dto.*
 import proofspace.trustregistry.gateways.TrustRegistryBackend
+import proofspace.trustregistry.services.BlockchainAdapterService
 import sttp.tapir.server.ServerEndpoint
 
-class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend]) extends BaseTapirController {
+class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend], AppContextProvider[BlockchainAdapterService]) extends BaseTapirController {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -166,6 +167,21 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend]) extends Ba
           handleQueryDid(registryId, did)
       }
 
+    val networkChoiceEndpoing = endpoint.get
+      .in("network-choice")
+      .securityIn(auth.bearer[Option[String]]())
+      .securityIn(header[Option[String]]("X-Body-Signature"))
+      .errorOut(jsonBody[HttpExceptionDTO])
+      .errorOut(statusCode)
+      .mapErrorOut(Mapping.from[(HttpExceptionDTO,StatusCode),HttpExceptionDTO](_._1)(ex => (ex,StatusCode(ex.statusCode))))
+      .description("Get list of possible networks with subnetworks")
+      .out(jsonBody[NetworkChoiceDTO])
+      .serverSecurityLogic { case (optBearer, optSignature) =>
+         verifySignature(optBearer, optSignature)
+      }.serverLogic { r => _ =>
+          handleNetworkChoice()
+      }
+
     def verifySignature(bearer: Option[String], signature: Option[String]): Future[Either[HttpExceptionDTO,Unit]] = {
       // Verify signature
       Future.successful(Right[HttpExceptionDTO,Unit](()))
@@ -220,6 +236,11 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend]) extends Ba
       }.recover {
         case ex:HttpException => Left(ex.toDTO)
       }
+    }
+
+    def handleNetworkChoice(): Future[Either[HttpExceptionDTO,NetworkChoiceDTO]] = {
+      val networks = AppContext[BlockchainAdapterService].supportedNetworks
+      Future.successful(Right(networks))
     }
 
   
