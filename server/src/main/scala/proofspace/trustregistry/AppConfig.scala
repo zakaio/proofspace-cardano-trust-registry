@@ -2,6 +2,7 @@ package proofspace.trustregistry
 
 import metaconfig.*
 import org.slf4j.LoggerFactory
+import proofspace.platform.util.ProofspaceDashboardKey
 
 case class CardanoConfig(
                           subnetworks: Map[String, CardanoNetworkConfig]
@@ -50,13 +51,42 @@ object CardanoNetworkConfig {
 
 }
 
+case class ProofspaceNetworkConfig(
+                                  baseZakaUrl: String = "https://test.proofspace.id/zaka",
+                                  requestSigning: Option[ProofspaceDashboardKey] = None
+                                  )
+object ProofspaceNetworkConfig {
+  lazy val default = ProofspaceNetworkConfig()
+  implicit lazy val surface: generic.Surface[ProofspaceNetworkConfig] = generic.deriveSurface[ProofspaceNetworkConfig]
+  implicit lazy val decoder: ConfDecoder[ProofspaceNetworkConfig] = generic.deriveDecoder[ProofspaceNetworkConfig](default)
+  implicit lazy val encoder: ConfEncoder[ProofspaceNetworkConfig] = generic.deriveEncoder[ProofspaceNetworkConfig]
+}
+
+case class ProofspaceConfig(
+                           defaultNetwork: String = "test",
+                           networks: Map[String, ProofspaceNetworkConfig]
+                           )
+
+object ProofspaceConfig {
+  lazy val default = ProofspaceConfig(
+    defaultNetwork = "test",
+    networks = Map(
+      "test" -> ProofspaceNetworkConfig()
+    )
+  )
+  implicit lazy val surface: generic.Surface[ProofspaceConfig] = generic.deriveSurface[ProofspaceConfig]
+  implicit lazy val decoder: ConfDecoder[ProofspaceConfig] = generic.deriveDecoder[ProofspaceConfig](default)
+  implicit lazy val encoder: ConfEncoder[ProofspaceConfig] = generic.deriveEncoder[ProofspaceConfig]
+}
+
 case class AppConfig(
                     mongoUri: String,
                     mongoDbName: String,
                     cardano: CardanoConfig,
                     host: String = "localhost",
                     port: Int = 4612,
-                    proofspaceApi: String = "https://test.proofspace.id/zaka"
+                    encodingKeyFile: String = "enckeys.json",
+                    proofspace: ProofspaceConfig = ProofspaceConfig.default
                     )
 
 case class CmdLineConfig(

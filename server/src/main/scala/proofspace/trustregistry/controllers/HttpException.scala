@@ -7,7 +7,7 @@ import sttp.model.StatusCode
 case class HttpException(statusCode: StatusCode,
                          message: String,
                          errorId: Option[String]=None,
-                         toLog: Boolean = true,
+                         var isLogged: Boolean = false,
                          cause:Throwable=null) extends Exception(message, cause) {
 
   def toDTO: HttpExceptionDTO = HttpExceptionDTO(statusCode.code, message, errorId)
