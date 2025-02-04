@@ -53,7 +53,8 @@ object CardanoNetworkConfig {
 
 case class ProofspaceNetworkConfig(
                                   baseZakaUrl: String = "https://test.proofspace.id/zaka",
-                                  requestSigning: Option[ProofspaceDashboardKey] = None
+                                  requestSigning: Option[ProofspaceDashboardKey] = None,
+                                  defaultServiceDid: Option[String] = None
                                   )
 object ProofspaceNetworkConfig {
   lazy val default = ProofspaceNetworkConfig()
@@ -79,6 +80,40 @@ object ProofspaceConfig {
   implicit lazy val encoder: ConfEncoder[ProofspaceConfig] = generic.deriveEncoder[ProofspaceConfig]
 }
 
+case class CardanoKeyConfig(
+                           hash: Option[String],
+                           seedPhrase: Option[String],
+                           )
+
+object CardanoKeyConfig {
+  lazy val default = CardanoKeyConfig(
+    hash = Some("hash"),
+    seedPhrase = Some("seedPhrase")
+  )
+  implicit lazy val surface: generic.Surface[CardanoKeyConfig] = generic.deriveSurface[CardanoKeyConfig]
+  implicit lazy val decoder: ConfDecoder[CardanoKeyConfig] = generic.deriveDecoder[CardanoKeyConfig](default)
+  implicit lazy val encoder: ConfEncoder[CardanoKeyConfig] = generic.deriveEncoder[CardanoKeyConfig]
+}
+
+case class ExternalServiceConfig(
+                                did: String,
+                                cardanoKeys: Map[String, CardanoKeyConfig] = Map.empty,
+                                jwtSharedSecret: Option[String] = None
+                                )
+
+object ExternalServiceConfig {
+  lazy val default = ExternalServiceConfig(
+    did = "did:example:123",
+    cardanoKeys = Map(
+      "mainnet" -> CardanoKeyConfig.default,
+      "testnet" -> CardanoKeyConfig.default
+    )
+  )
+  implicit lazy val surface: generic.Surface[ExternalServiceConfig] = generic.deriveSurface[ExternalServiceConfig]
+  implicit lazy val decoder: ConfDecoder[ExternalServiceConfig] = generic.deriveDecoder[ExternalServiceConfig](default)
+  implicit lazy val encoder: ConfEncoder[ExternalServiceConfig] = generic.deriveEncoder[ExternalServiceConfig]
+}
+
 case class AppConfig(
                     mongoUri: String,
                     mongoDbName: String,
@@ -86,8 +121,23 @@ case class AppConfig(
                     host: String = "localhost",
                     port: Int = 4612,
                     encodingKeyFile: String = "enckeys.json",
-                    proofspace: ProofspaceConfig = ProofspaceConfig.default
-                    )
+                    proofspace: ProofspaceConfig = ProofspaceConfig.default,
+                    externalServices: Seq[ExternalServiceConfig] = Seq.empty
+                    )  {
+  
+  def retrieveProofspaceServiceDidAndNetwork(optServiceDid: Option[String], optProofspaceNetwork: Option[String]): (String, String) = {
+    val network = optProofspaceNetwork.getOrElse(proofspace.defaultNetwork)
+    val serviceDid = optServiceDid.getOrElse(
+      proofspace.networks.getOrElse(network, 
+          throw new IllegalStateException(s"network ${network} is not configured")
+        ).defaultServiceDid.getOrElse(
+          throw new IllegalStateException("serviceDid is not provided")
+      )
+    )
+    (serviceDid, network)
+  }
+  
+}
 
 case class CmdLineConfig(
                           config: Option[String] = None,

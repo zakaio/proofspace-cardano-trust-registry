@@ -1,6 +1,8 @@
 package proofspace.trustregistry.fakes
 
+import com.github.rssh.appcontext.{AppContext, AppContextProvider}
 import org.slf4j.LoggerFactory
+import proofspace.trustregistry.AppConfig
 import proofspace.trustregistry.dto.TrustRegistryEntryStatusDTO.Active
 import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.Add
 import proofspace.trustregistry.dto.{CreateTrustRegistryDTO, TrustRegistriesDTO, TrustRegistryChangeDTO, TrustRegistryDTO, TrustRegistryDidChangeDTO, TrustRegistryDidEntriesDTO, TrustRegistryDidEntryDTO, TrustRegistryEntryQueryDTO, TrustRegistryQueryDTO}
@@ -14,13 +16,13 @@ import java.time.{LocalDateTime, ZoneOffset}
 import scala.concurrent.Future
 
 
-class FakeTrustRegistryBackend extends TrustRegistryBackend {
+class FakeTrustRegistryBackend(using AppContextProvider[AppConfig]) extends TrustRegistryBackend {
   
   val registries: TrieMap[String, FakeTrustRegistryBackend.InMemoryTrustRegistry] = TrieMap.empty
 
   override def name: String = "FakeTrustRegistryBackend"
 
-  override def listRegistries(query: TrustRegistryQueryDTO): Future[TrustRegistriesDTO] = {
+  override def listRegistries(query: TrustRegistryQueryDTO, serviceDid: String, proofspaceNetwork: String): Future[TrustRegistriesDTO] = {
     val retval = registries.flatMap{
       case (name, registry) =>
         if (query.registryId.isDefined && query.registryId.get != name) {
@@ -29,23 +31,26 @@ class FakeTrustRegistryBackend extends TrustRegistryBackend {
           None
         } else {
           val now = LocalDateTime.now()
-          Some(TrustRegistryDTO(name, name, "fake", None, None, now))
+          Some(TrustRegistryDTO(name, name, "fake", serviceDid, proofspaceNetwork, None, None, now))
         }
     }
     Future.successful(TrustRegistriesDTO(retval.toSeq, retval.size))
   }
 
   override def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO] = {
+    val (serviceDid, proofspaceNetwork) = AppContext[AppConfig].retrieveProofspaceServiceDidAndNetwork(
+      create.proofspaceServiceDid, create.proofspaceNetwork
+    )
     registries.get(create.name) match
       case Some(_) => throw new Exception(s"Registry with name ${create.name} already exists")
       case None =>
         val registry = new FakeTrustRegistryBackend.InMemoryTrustRegistry
         registries.put(name, registry)
         val now = LocalDateTime.now()
-        Future.successful(TrustRegistryDTO(create.name, create.name, create.network, None, None, now))
+        Future.successful(TrustRegistryDTO(create.name, create.name, create.network, serviceDid, proofspaceNetwork, None, None, now))
   }
   
-  override def removeRegistry(registryId: String): Future[Boolean] = {
+  override def removeRegistry(registryId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean] = {
     registries.remove(registryId) match
       case Some(_) => Future.successful(true)
       case None => Future.successful(false)
@@ -84,7 +89,7 @@ class FakeTrustRegistryBackend extends TrustRegistryBackend {
   }
 
 
-  override def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO] = {
+  override def submitChange(change: TrustRegistryChangeDTO, serviceDid: String, proofspaceNetwork: String): Future[TrustRegistryChangeDTO] = {
     registries.get(change.registryId) match {
       case Some(registry) =>
         val entry = registry.applyEntry(change)
@@ -93,11 +98,11 @@ class FakeTrustRegistryBackend extends TrustRegistryBackend {
     }
   }
   
-  override def rejectChange(registryId: String, changeId: String): Future[Boolean] = {
+  override def rejectChange(registryId: String, changeId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean] = {
     throw new NotImplementedError("Not implemented")
   }
   
-  override def approveChange(registryId: String, changeId: String): Future[Boolean] = {
+  override def approveChange(registryId: String, changeId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean] = {
     Future successful(true)
   }
   

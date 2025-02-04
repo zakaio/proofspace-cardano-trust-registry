@@ -10,17 +10,17 @@ trait TrustRegistryBackend {
   
   def name: String
   
-  def listRegistries(query: TrustRegistryQueryDTO): Future[TrustRegistriesDTO]
+  def listRegistries(query: TrustRegistryQueryDTO, serviceDid: String, proofspaceNetwork: String): Future[TrustRegistriesDTO]
   
   def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO]
   
-  def removeRegistry(registryId: String): Future[Boolean]
+  def removeRegistry(registryId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean]
   
-  def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO]
+  def submitChange(change: TrustRegistryChangeDTO, serviceDid: String, proofspaceNetwork: String): Future[TrustRegistryChangeDTO]
   
-  def rejectChange(registryId: String, changeId: String): Future[Boolean]
+  def rejectChange(registryId: String, changeId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean]
   
-  def approveChange(registryId: String, changeId: String): Future[Boolean]
+  def approveChange(registryId: String, changeId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean]
   
   def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryDidEntriesDTO]
   

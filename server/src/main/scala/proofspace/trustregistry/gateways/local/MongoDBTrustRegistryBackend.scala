@@ -36,10 +36,13 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
 
   override def createRegistry(create: CreateTrustRegistryDTO): Future[TrustRegistryDTO] = async[Future]{
     logger.debug(s"Creating trust registry ${create.name}")
+    val (serviceDid, proofspaceNetwork) = AppContext[AppConfig].retrieveProofspaceServiceDidAndNetwork(create.proofspaceServiceDid, create.proofspaceNetwork)
     val blockchainAdapter = AppContext[BlockchainAdapterService].createBlockchainAdapter(create.network, create.subnetwork)
     val registryId = blockchainAdapter.createTrustRegistry(create).await
     val entry = TrustRegistryEntry(registryId, create.name,
-      create.network, create.subnetwork, create.targetAdderss,
+      create.network, create.subnetwork,
+      serviceDid, proofspaceNetwork,
+      create.targetAdderss,
       Seq.empty)
     val collection = await(retrieveCollection)
     val insertResult = await(collection.insert.one(entry))
@@ -49,36 +52,40 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     }
     // TODO: receive through the blockchain adapter.
     val now = LocalDateTime.now()
-    TrustRegistryDTO(registryId, create.name, create.network, create.subnetwork, create.targetAdderss, now)
+    TrustRegistryDTO(registryId, create.name, create.network, serviceDid, proofspaceNetwork, create.subnetwork, create.targetAdderss, now)
   }
 
-  override def listRegistries(query: TrustRegistryQueryDTO): Future[TrustRegistriesDTO] = async[Future] {
+  override def listRegistries(query: TrustRegistryQueryDTO, serviceDid: String, proofspaceNetwork: String): Future[TrustRegistriesDTO] = async[Future] {
     val collection = await(retrieveCollection)
     val mongoQuery0 = BSONDocument()
     val mongoQuery1 = query.registryId match
       case Some(registryId) => mongoQuery0 ++ BSONDocument("registryId" -> registryId)
       case None => mongoQuery0
-    val mongoQuery = mongoQuery1
+    val mongoQuery = mongoQuery1 ++ BSONDocument("serviceDid" -> serviceDid, "proofspaceNetwork" -> proofspaceNetwork)
     val limit = query.limit.getOrElse(1000)
     val offset = query.offset.getOrElse(0)
     val registries = collection.find(mongoQuery).skip(offset).cursor[TrustRegistryHeader]().collect[List](limit).await
     TrustRegistriesDTO(registries.map{ header =>
-      TrustRegistryDTO(header.registryId, header.name, header.network, header.subnetwork, header.targetAddress, LocalDateTime.now())
+      TrustRegistryDTO(header.registryId, header.name, header.network, serviceDid, proofspaceNetwork, header.subnetwork, header.targetAddress, LocalDateTime.now())
     }, registries.size)
   }
 
-  override def removeRegistry(registryId: String): Future[Boolean] = async[Future]{
+  override def removeRegistry(registryId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean] = async[Future]{
     val collection = retrieveCollection.await
-    val deleteResult = collection.delete.one(BSONDocument("registryId" -> registryId)).await
+    val deleteResult = collection.delete.one(
+      BSONDocument("registryId" -> registryId, "serviceDid" -> serviceDid, "proofspaceNetwork" -> proofspaceNetwork)
+    ).await
     deleteResult.n == 1
   }
 
-  override def submitChange(change: TrustRegistryChangeDTO): Future[TrustRegistryChangeDTO] = async[Future]{
+  override def submitChange(change: TrustRegistryChangeDTO, serviceDid: String, proofspaceNetwork: String): Future[TrustRegistryChangeDTO] = async[Future]{
     if (change.addedDids.isEmpty && change.removedDids.isEmpty) {
       throw new Exception("Change must contain at least one DID")
     }
     val collection = await(retrieveCollection)
-    val optRegistryHeader = await(collection.find(BSONDocument("registryId" -> change.registryId)).one[TrustRegistryHeader])
+    val optRegistryHeader = await(collection.find(
+      BSONDocument("registryId" -> change.registryId, "serviceDid" -> serviceDid, "proofspaceNetwork" -> proofspaceNetwork)
+    ).one[TrustRegistryHeader])
     val registryHeader = optRegistryHeader.getOrElse(throw new Exception(s"Trust registry ${change.registryId} not found"))
     val blockchainAdapter = AppContext[BlockchainAdapterService].createBlockchainAdapter(registryHeader.network, registryHeader.subnetwork)
     val changeId = blockchainAdapter.createTrustRegistryChangeRequest(change).await
@@ -111,11 +118,13 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     change.copy(changeId = Some(changeId))
   }
 
-  override def rejectChange(registryId: String, changeId: String): Future[Boolean] = async[Future]{
+  override def rejectChange(registryId: String, changeId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean] = async[Future]{
     // write mongodb query wich remove change with changeId
     val collection = await(retrieveCollection)
     val searchQuery = BSONDocument(
       "registryId" -> registryId,
+      "serviceDid" -> serviceDid,
+      "proofspaceNetwork" -> proofspaceNetwork,
       "changes" -> BSONDocument(
         "$elemMatch" -> BSONDocument("changeId" -> changeId)
       )
@@ -129,10 +138,12 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     updateResult.result[TrustRegistryHeader].isDefined
   }
 
-  override def approveChange(registryId: String, changeId: String): Future[Boolean] = async[Future] {
+  override def approveChange(registryId: String, changeId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean] = async[Future] {
     val collection = await(retrieveCollection)
     val searchQuery = BSONDocument(
       "registryId" -> registryId,
+      "serviceDid" -> serviceDid,
+      "proofspaceNetwork" -> proofspaceNetwork,
       "changes" -> BSONDocument(
         "$elemMatch" -> BSONDocument("changeId" -> changeId)
       )
@@ -172,10 +183,17 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     val matchQuery1 = query.did match
       case Some(did) => matchQuery0 ++ BSONDocument("changes.didChanges.did" -> did)
       case None => matchQuery0
+    val matchQuery2 = query.serviceDid match
+      case Some(serviceDid) => matchQuery1 ++ BSONDocument("serviceDid" -> serviceDid)
+      case None => matchQuery1
+    val matchQuery3 = query.proofspaceNetwork match
+      case Some(proofspaceNetwork) => matchQuery2 ++ BSONDocument("proofspaceNetwork" -> proofspaceNetwork)
+      case None => matchQuery2
+    val matchQuery = matchQuery3
     val collection = retrieveCollection.await
 
     val matchUnwindStages = List(
-      BSONDocument("$match" -> matchQuery1),
+      BSONDocument("$match" -> matchQuery),
       BSONDocument("$unwind" -> "$changes"),
       BSONDocument("$unwind" -> "$changes.didChanges"),
     )
@@ -396,6 +414,8 @@ object MongoDBTrustRegistryBackend {
                                name: String,
                                network: String,
                                subnetwork: Option[String],
+                               serviceDid: String,
+                               proofspaceNetwork: String,
                                targetAddress: Option[String],
                                changes: Seq[TrustRegistryChangeEntry],
                                )

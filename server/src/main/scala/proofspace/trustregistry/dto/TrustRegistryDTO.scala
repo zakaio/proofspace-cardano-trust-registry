@@ -9,6 +9,8 @@ case class TrustRegistryDTO(
                              id: String,
                              name: String,
                              network: String,
+                             proofspaceServiceDid: String,
+                             proofspaceNetwork: String,
                              subnetwork: Option[String],
                              didPrefix: Option[String],
                              lastChangeDate: LocalDateTime,
@@ -24,6 +26,8 @@ case class CreateTrustRegistryDTO(
                                    name: String,
                                    network: String,
                                    subnetwork: Option[String] = None,
+                                   proofspaceServiceDid: Option[String] = None,
+                                   proofspaceNetwork: Option[String] = None,
                                    didPrefix: Option[String] = None,
                                    targetAdderss: Option[String] = None,
                                  )

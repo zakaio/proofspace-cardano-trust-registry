@@ -18,6 +18,9 @@ case class TrustRegistryEntryQueryDTO(
                                      orderByDirection: Option[String] = None,
                                      @query
                                      did: Option[String] = None,
+                                     // next options are filled from securityIn, so without @query annotation
+                                     serviceDid: Option[String] = None,
+                                     proofspaceNetwork: Option[String] = None,
                                      ) 
 
 object TrustRegistryEntryQueryDTO {

@@ -7,6 +7,7 @@ import cps.monads.{*, given}
 import com.dimafeng.testcontainers.{ContainerDef, MongoDBContainer}
 import com.dimafeng.testcontainers.munit.TestContainerForAll
 import munit.FutureFixture
+import proofspace.platform.util.ProofspaceDashboardKey
 import proofspace.trustregistry.*
 import proofspace.trustregistry.dto.*
 import proofspace.trustregistry.util.JSoniterDefaultCodecs.{*, given}
@@ -34,7 +35,17 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
         val config = AppConfig(
           mongoUri = container.container.getConnectionString,
           mongoDbName = "test",
-          cardano = CardanoConfig.default
+          cardano = CardanoConfig.default,
+          proofspace = ProofspaceConfig(
+            defaultNetwork = "test",
+            networks = Map(
+              "test" -> ProofspaceNetworkConfig(
+                baseZakaUrl = "https://test.proofspace.id/zaka",
+                requestSigning  = None,
+                defaultServiceDid  = Some("testServiceDid")  // TODO: get real service.
+              )
+            )
+          )
         )
         val server = new TrustRegistryServer()
         trustRegistryPromise.success(server)
