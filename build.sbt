@@ -3,7 +3,7 @@
 
 
 val commonSettings = Seq(
-  scalaVersion := "3.6.2",
+  scalaVersion := "3.6.3",
   organization := "id.proofspace",
   scalacOptions ++= Seq(
     "-Xmax-inlines","100",

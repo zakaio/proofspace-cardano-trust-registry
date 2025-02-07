@@ -29,7 +29,10 @@ case class CreateTrustRegistryDTO(
                                    proofspaceServiceDid: Option[String] = None,
                                    proofspaceNetwork: Option[String] = None,
                                    didPrefix: Option[String] = None,
-                                   targetAdderss: Option[String] = None,
+                                   createTargetAddress: Option[String] = None,
+                                   createSubmitCost: Option[Int] = None,
+                                   changeTargetAddress: Option[String] = None,
+                                   changeSubmitCost: Option[Int] = None,
                                  )
 
 object CreateTrustRegistryDTO {

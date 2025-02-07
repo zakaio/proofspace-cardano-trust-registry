@@ -11,6 +11,17 @@ import scalus.ledger.api.v3.FromDataInstances.given
 import proofspace.trustregistry.common.*
 
 /**
+ * Trust registry is defined by transactions, which is payed from smart-contract
+ * address (to any address, verified by the smart contract).
+ *
+ * Transaction Inputs (payments to smart-contract) can be used as reference inputs
+ * in the transactions from the trust-registry smart-contract.
+ *
+ * Trus-tregistry is restored by the all utxos, which are payed from the smart-contract.
+ */
+
+
+/**
  * Here is a representation of trust registry, which exists in the offline
  * world.  (and normally is extracted from the blockchain ledger)
  */
@@ -36,7 +47,7 @@ trait TrustRegistrySnapshot {
   /**
    * name of the trust registry
    */
-  def name: String
+  def name: ByteString
 
   /**
    * Check, if the given DID is in the trust registry.
@@ -48,11 +59,18 @@ trait TrustRegistrySnapshot {
    */
   def applyChange(change: TrustRegistryChange): TrustRegistrySnapshot
 
+
   /**
-   * retrieve current maintance model of the trust registry.
+   * Address where the trust registry was created.
+   * All incomint transactiosn from this adress is considered
+   * to be changes of the trust registry.
+   *
+   * Usually on change submit address is smart contract, which
+   * check the integrity of the trust registry and correctness of the changes.
    */
-  def maintanceModel: TrustRegistryMaintanceModel
-  
+  def address: Address
+
+
 }
 
 /**
@@ -60,13 +78,14 @@ trait TrustRegistrySnapshot {
  */
 trait TrustRegistry {
 
-  def name: String
+  def name: ByteString
   
   def isUpdated: Boolean 
 
   def snapshot: TrustRegistrySnapshot
 
 }
+
 
 /**
  * Change describe by the set of the trust registry operation.
@@ -79,9 +98,8 @@ enum TrustRegistryOperation  {
 
   case AddDid(did: ByteString)
   case RemoveDid(did: ByteString)
-  case ChangeMaintanceModel(newMaintanceModel: TrustRegistryMaintanceModel)
-  
-  
+  case ChangeName(name: ByteString)
+
 }
 
 object TrustRegistryOperation {
@@ -94,12 +112,43 @@ object TrustRegistryOperation {
       case x@TrustRegistryOperation.RemoveDid(did) =>
         //Data.Constr(1, scala.collection.immutable.List(Data.B(x.did)))
         Builtins.constrData(1, scalus.builtin.List(Data.B(x.did)) )
-      case x@TrustRegistryOperation.ChangeMaintanceModel(newMaintanceModel) =>
-        Builtins.constrData(2, scalus.builtin.List(summon[ToData[TrustRegistryMaintanceModel]](x.newMaintanceModel)))
+      case x@TrustRegistryOperation.ChangeName(name: ByteString) =>
+        //Data.Constr(2, scala.collection.immutable.List(Data.B(x.name)))
+        Builtins.constrData(2, scalus.builtin.List(Data.B(x.name)) )
   }
 
   given FromData[TrustRegistryOperation] = FromData.deriveCaseClass[TrustRegistryOperation]
 
+
 }
 
 
+sealed trait TrustRegistryChangeRecord
+case class InlineTrustRegistryStart(name: ByteString) extends TrustRegistryChangeRecord
+case class InlineChangeRecord(operations: scalus.prelude.List[TrustRegistryOperation]) extends TrustRegistryChangeRecord
+case class ReferenceChangeRecord(referenceInput: BigInt) extends TrustRegistryChangeRecord
+
+
+
+
+object TrustRegistryChangeRecord {
+
+
+  implicit def xtoData: ToData[TrustRegistryChangeRecord] = (r: TrustRegistryChangeRecord) => {
+    r match
+      case x@InlineTrustRegistryStart(name) =>
+        Builtins.constrData(0, scalus.builtin.List(Data.B(x.name)) )
+      case x@InlineChangeRecord(operations) =>
+        Builtins.constrData(1, scalus.builtin.List(PreludeListData.listToData(operations)) )
+      case x@ReferenceChangeRecord(referenceInput) =>
+        Builtins.constrData(2, scalus.builtin.List(Builtins.iData(referenceInput)))
+  }
+
+
+  // error in the compiler
+  //implicit def xfromData: FromData[TrustRegistryChangeRecord] = FromData.deriveCaseClass[TrustRegistryChangeRecord]
+
+
+
+
+}

@@ -22,7 +22,7 @@ class BlockchainAdapterService(using AppContextProvider[AppConfig]) {
       case "cardano" =>
         val cardanoNetwork = subnetwork.getOrElse("mainnet")
         AppContext[AppConfig].cardano.subnetworks.get(cardanoNetwork) match
-          case Some(networkConfig) => new CardanoLocalTrustRegistryAdapter(networkConfig)
+          case Some(networkConfig) => new CardanoLocalTrustRegistryAdapter(cardanoNetwork, networkConfig)
           case None => throw new IllegalArgumentException(s"Cardano network $cardanoNetwork not found")
   }
 

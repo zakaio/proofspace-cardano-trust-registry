@@ -24,12 +24,12 @@ import scala.util.*
  * Contàins the trust registry, which is maintained by the single maintainer.
  * For now all changes are stored in memory. Later will switch to db repeesentation.
  */
-case class SingleMaintainerTrustRegistrySnapshot(pkh: PubKeyHash,
+case class InMemoryTrustRegistrySnapshot(pkh: PubKeyHash,
                                     address:  Address,
                                     txId: TxId,
                                     override val lastTxId: TxId,
                                     override val lastTouch: PosixTime,
-                                    override val name: String,
+                                    override val name: ByteString,
                                     val dids: Map[ByteString,ByteString] = Map.empty
                                    ) extends TrustRegistrySnapshot {
 
@@ -39,34 +39,33 @@ case class SingleMaintainerTrustRegistrySnapshot(pkh: PubKeyHash,
 
   def check(did: String): Boolean = dids.get(ByteString.fromString(did)).isDefined
 
-  def applyChange(change: TrustRegistryChange): SingleMaintainerTrustRegistrySnapshot = {
-    val nextDids = applyOperations(change.operations)
-    copy(lastTxId = change.id, lastTouch = change.time, dids = nextDids)
+  def applyChange(change: TrustRegistryChange): InMemoryTrustRegistrySnapshot = {
+    val (nextName, nextDids) = applyOperations(change.operations)
+    copy(name=nextName, lastTxId = change.id, lastTouch = change.time, dids = nextDids)
   }
 
-  def applyOperations(ops: Seq[TrustRegistryOperation]): Map[ByteString,ByteString] = {
-    ops.foldLeft(dids ) { (acc, x) =>
+  def applyOperations(ops: Seq[TrustRegistryOperation]): (ByteString, Map[ByteString,ByteString]) = {
+    ops.foldLeft((name, dids) ) { (acc, x) =>
       x match {
         case TrustRegistryOperation.AddDid(did) =>
-          acc.updated(did, did)
+          (name, acc._2.updated(did, did))
         case TrustRegistryOperation.RemoveDid(did) =>
-          acc.removed(did)
-        case TrustRegistryOperation.ChangeMaintanceModel(newMaintanceModel) =>
-          throw new IllegalArgumentException("ChangeMaintanceModel is not supported")
+          (name, acc._2.removed(did))
+        case TrustRegistryOperation.ChangeName(name) =>
+          (name, acc._2)
       }
     }
   }
 
-  val maintanceModel = TrustRegistryMaintanceModel.SingleMaintainer(pkh, address, BigInt(0))
 
 
 }
 
-class SingleMaintainerTrustRegistry(pkh: PubKeyHash,
-                                    targetAddress: Address,
-                                    inSnapshot: SingleMaintainerTrustRegistrySnapshot,
-                                    transactions: AsyncList[Future, CardanoTransactionOfflineAccess],
-                                    updatedFlag: AtomicBoolean
+class InMemoryTrustRegistry(pkh: PubKeyHash,
+                            targetAddress: Address,
+                            inSnapshot: InMemoryTrustRegistrySnapshot,
+                            transactions: AsyncList[Future, CardanoTransactionOfflineAccess],
+                            updatedFlag: AtomicBoolean
                                    ) extends TrustRegistry {
 
   val snapshotRef = AtomicReference(inSnapshot)
@@ -143,15 +142,3 @@ class SingleMaintainerTrustRegistry(pkh: PubKeyHash,
 
 }
 
-
-object SingleMaintainerTrustRegistry {
-
-  def apply(pkh: PubKeyHash, address: Address, txId: TxId, startTime: PosixTime, name: String, cardanoAccess: CardanoOfflineAccess): SingleMaintainerTrustRegistry = {
-      val snapshot = SingleMaintainerTrustRegistrySnapshot(pkh, address, txId, txId, startTime, name, Map.empty)
-      val ta = cardanoAccess.iterateTransactionsTo(address, txId, 100)
-      new SingleMaintainerTrustRegistry(pkh, address, snapshot, ta.transactions, ta.updateFlag)
-  }
-
-  
-
-}
