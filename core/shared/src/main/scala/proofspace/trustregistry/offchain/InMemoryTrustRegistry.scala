@@ -1,6 +1,6 @@
 package proofspace.trustregistry.offchain
 
-import proofspace.trustregistry.model.{TrustRegistry, TrustRegistryChange, TrustRegistryMaintanceModel, TrustRegistryOperation, TrustRegistrySnapshot}
+import proofspace.trustregistry.model.{TrustRegistry, TrustRegistryChange, TrustRegistryOperation, TrustRegistrySnapshot}
 import scalus.builtin.ByteString
 import scalus.ledger.api.v3.*
 
@@ -47,10 +47,16 @@ case class InMemoryTrustRegistrySnapshot(pkh: PubKeyHash,
   def applyOperations(ops: Seq[TrustRegistryOperation]): (ByteString, Map[ByteString,ByteString]) = {
     ops.foldLeft((name, dids) ) { (acc, x) =>
       x match {
-        case TrustRegistryOperation.AddDid(did) =>
-          (name, acc._2.updated(did, did))
-        case TrustRegistryOperation.RemoveDid(did) =>
-          (name, acc._2.removed(did))
+        case TrustRegistryOperation.AddDids(dids) =>
+          val newMap =  scalus.prelude.List.foldLeft(dids,acc._2) { (s, did) =>
+            s.updated(did, did)
+          }
+          (name, newMap)
+        case TrustRegistryOperation.RemoveDids(did) =>
+          val newMap = scalus.prelude.List.foldLeft(did, acc._2) { (s, did) =>
+            s.removed(did)
+          }
+          (name, newMap)
         case TrustRegistryOperation.ChangeName(name) =>
           (name, acc._2)
       }

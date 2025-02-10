@@ -89,15 +89,15 @@ trait TrustRegistry {
 
 /**
  * Change describe by the set of the trust registry operation.
- * Mapping from transaction to changed is defined by maintance model.
+ * Change records are situated in the
  */
 case class TrustRegistryChange(id: TxId, registryId: TxId, operations: Seq[TrustRegistryOperation], time: PosixTime)
 
 
 enum TrustRegistryOperation  {
 
-  case AddDid(did: ByteString)
-  case RemoveDid(did: ByteString)
+  case AddDids(dids: scalus.prelude.List[ByteString])
+  case RemoveDids(dids: scalus.prelude.List[ByteString])
   case ChangeName(name: ByteString)
 
 }
@@ -106,49 +106,27 @@ object TrustRegistryOperation {
 
   given ToData[TrustRegistryOperation] = (op:TrustRegistryOperation) => {
     op match
-      case x@TrustRegistryOperation.AddDid(did) =>
-        Builtins.constrData(0, scalus.builtin.List(Data.B(x.did)) )
-        //Data.Constr(0, Builtins.mkCons(Data.B(x)) scala.collection.immutable.List(Data.B(x.did)))
-      case x@TrustRegistryOperation.RemoveDid(did) =>
-        //Data.Constr(1, scala.collection.immutable.List(Data.B(x.did)))
-        Builtins.constrData(1, scalus.builtin.List(Data.B(x.did)) )
+      case x@TrustRegistryOperation.AddDids(dids) =>
+        val dd = PreludeListData.listToData(dids)
+        Builtins.constrData(0, scalus.builtin.List(dd) )
+      case x@TrustRegistryOperation.RemoveDids(did) =>
+        val dd = PreludeListData.listToData(did)
+        Builtins.constrData(1, scalus.builtin.List(dd) )
       case x@TrustRegistryOperation.ChangeName(name: ByteString) =>
-        //Data.Constr(2, scala.collection.immutable.List(Data.B(x.name)))
         Builtins.constrData(2, scalus.builtin.List(Data.B(x.name)) )
   }
 
   given FromData[TrustRegistryOperation] = FromData.deriveCaseClass[TrustRegistryOperation]
 
-
-}
-
-
-sealed trait TrustRegistryChangeRecord
-case class InlineTrustRegistryStart(name: ByteString) extends TrustRegistryChangeRecord
-case class InlineChangeRecord(operations: scalus.prelude.List[TrustRegistryOperation]) extends TrustRegistryChangeRecord
-case class ReferenceChangeRecord(referenceInput: BigInt) extends TrustRegistryChangeRecord
-
-
-
-
-object TrustRegistryChangeRecord {
-
-
-  implicit def xtoData: ToData[TrustRegistryChangeRecord] = (r: TrustRegistryChangeRecord) => {
-    r match
-      case x@InlineTrustRegistryStart(name) =>
-        Builtins.constrData(0, scalus.builtin.List(Data.B(x.name)) )
-      case x@InlineChangeRecord(operations) =>
-        Builtins.constrData(1, scalus.builtin.List(PreludeListData.listToData(operations)) )
-      case x@ReferenceChangeRecord(referenceInput) =>
-        Builtins.constrData(2, scalus.builtin.List(Builtins.iData(referenceInput)))
+  
+  given listOperationsToData: ToData[scalus.prelude.List[TrustRegistryOperation]] = (ops: scalus.prelude.List[TrustRegistryOperation]) => {
+    PreludeListData.listToData(ops)
   }
-
-
-  // error in the compiler
-  //implicit def xfromData: FromData[TrustRegistryChangeRecord] = FromData.deriveCaseClass[TrustRegistryChangeRecord]
-
-
-
-
+  
+  given listOperationsFromData: FromData[scalus.prelude.List[TrustRegistryOperation]] = (data: scalus.builtin.Data) => {
+    PreludeListData.listFromData(data)
+  }
+  
 }
+
+

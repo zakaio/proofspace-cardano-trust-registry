@@ -7,8 +7,9 @@ import proofspace.trustregistry.{AppConfig, CardanoNetworkConfig}
 import scala.concurrent.Future
 import proofspace.trustregistry.dto.*
 import proofspace.trustregistry.gateways.local.{BlockChainAddressListener, BlockChainLocalTrustRegistryAdapter}
-import com.bloxbean.cardano.client.transaction.spec.{Transaction}
+import com.bloxbean.cardano.client.transaction.spec.Transaction
 import com.bloxbean.cardano.client.plutus.spec.PlutusData
+import scalus.bloxbean.Interop
 
 class CardanoLocalTrustRegistryAdapter(cardanoSubnetwork: String, cardanoNetworkConfig: CardanoNetworkConfig)(
   using AppContextProvider[AppConfig]) extends BlockChainLocalTrustRegistryAdapter {
@@ -19,7 +20,8 @@ class CardanoLocalTrustRegistryAdapter(cardanoSubnetwork: String, cardanoNetwork
     val senderAddress = retrieveSenderAddress(serviceDid, cardanoSubnetwork, proofspaceNetwork)
     val receiverAddress = createTrustRegistryDTO.createTargetAddress.getOrElse(throw IllegalArgumentException("Target address for cardano is required"))
     val amountToSend = createTrustRegistryDTO.createSubmitCost.getOrElse(throw IllegalArgumentException("Submit cost for cardano is required"));
-
+    val createTrustRegistryCommand = ??? 
+    val data = Interop.toPlutusData(createTrustRegistryCommand)
     //val datum = PlutusData.deserialize(createTrustRegistryDTO)
      ???
   }

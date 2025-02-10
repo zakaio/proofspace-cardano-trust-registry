@@ -33,6 +33,7 @@ case class CreateTrustRegistryDTO(
                                    createSubmitCost: Option[Int] = None,
                                    changeTargetAddress: Option[String] = None,
                                    changeSubmitCost: Option[Int] = None,
+                                   mintingPolicy: Option[String] = None,
                                  )
 
 object CreateTrustRegistryDTO {
