@@ -1,0 +1,3 @@
+package proofspace.trustregistry.gateways.cardano.contractGenerators
+
+object SingleMaintainerGenerator

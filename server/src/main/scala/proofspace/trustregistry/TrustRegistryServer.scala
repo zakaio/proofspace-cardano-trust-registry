@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory
 import sttp.tapir.*
 import sttp.tapir.server.pekkohttp.{PekkoHttpServerInterpreter, PekkoHttpServerOptions}
 import sttp.tapir.server.interceptor.cors.{CORSConfig, CORSInterceptor}
+import sttp.model.Method
 import proofspace.trustregistry.controllers.RegistryCrudAPI
 import proofspace.trustregistry.gateways.TrustRegistryBackend
 import proofspace.trustregistry.gateways.local.MongoDBTrustRegistryBackend
@@ -60,17 +61,23 @@ class TrustRegistryServer {
 
     val swaggerEndpoints = SwaggerInterpreter().fromEndpoints[Future](endpoints.map(_.endpoint), "ProofSpace TrustRegstryServer", "0.0.1")
 
+    val corsConfig = CORSConfig.default.allowMatchingOrigins(_ => true)
+      .allowMethods(Method.GET, Method.POST, Method.PUT,
+        Method.OPTIONS, Method.DELETE, Method.HEAD,
+        Method.CONNECT)
+      .allowCredentials
+
     val serverOptions = PekkoHttpServerOptions.customiseInterceptors.serverLog(
       PekkoHttpServerOptions.defaultSlf4jServerLog.logWhenReceived(true)
         .logWhenHandled(true)
         .logLogicExceptions(true)
         .logAllDecodeFailures(true)
-    ).corsInterceptor(Some(CORSInterceptor.default))
+    ).corsInterceptor(CORSInterceptor.customOrThrow(corsConfig))
       .notAcceptableInterceptor(None).options
 
 
     val routes = PekkoHttpServerInterpreter(serverOptions).toRoute(endpoints ++ swaggerEndpoints)
-    
+
 
     val bindingFuture = Http().newServerAt(summon[AppConfig].host, summon[AppConfig].port).bindFlow(routes)
 

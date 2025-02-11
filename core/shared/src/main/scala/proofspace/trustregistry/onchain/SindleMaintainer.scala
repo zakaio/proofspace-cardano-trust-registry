@@ -44,7 +44,8 @@ object SindleMaintainer  {
   /**
    * Check minting policy for the single-maintainer trust registry.
    */
-  def mintingPolicy(pkh: PubKeyHash, registryName: ByteString)(ctx: ScriptContext): Unit = {
+  def mintingPolicy(pkhBytes: ByteString, registryName: ByteString)(ctx: ScriptContext): Unit = {
+    val pkh = PubKeyHash(pkhBytes)
     val txInfo = ctx.txInfo
 
     val ownSym = ctx.scriptInfo match
@@ -74,7 +75,6 @@ object SindleMaintainer  {
     
     if (scalus.prelude.List.isEmpty(myOutputs)) then
       throw new Exception("No outputs with the given name")
-    
 
 
   }
