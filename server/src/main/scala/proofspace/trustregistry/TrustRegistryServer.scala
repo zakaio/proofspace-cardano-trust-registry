@@ -12,6 +12,7 @@ import org.apache.pekko.http.scaladsl.Http
 import org.slf4j.LoggerFactory
 import sttp.tapir.*
 import sttp.tapir.server.pekkohttp.{PekkoHttpServerInterpreter, PekkoHttpServerOptions}
+import sttp.tapir.server.interceptor.cors.{CORSConfig, CORSInterceptor}
 import proofspace.trustregistry.controllers.RegistryCrudAPI
 import proofspace.trustregistry.gateways.TrustRegistryBackend
 import proofspace.trustregistry.gateways.local.MongoDBTrustRegistryBackend
@@ -64,10 +65,12 @@ class TrustRegistryServer {
         .logWhenHandled(true)
         .logLogicExceptions(true)
         .logAllDecodeFailures(true)
-    ).notAcceptableInterceptor(None).options
+    ).corsInterceptor(Some(CORSInterceptor.default))
+      .notAcceptableInterceptor(None).options
 
 
     val routes = PekkoHttpServerInterpreter(serverOptions).toRoute(endpoints ++ swaggerEndpoints)
+    
 
     val bindingFuture = Http().newServerAt(summon[AppConfig].host, summon[AppConfig].port).bindFlow(routes)
 

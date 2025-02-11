@@ -10,6 +10,13 @@ import scalus.prelude.Maybe.Just
 import scalus.prelude.{AssocMap, Maybe}
 import scalus.prelude.Prelude.{*, given}
 
+/**
+ * Single maintainer trust registry.
+ * The check in minting policy is done that:
+ * 1. The output is signed by the maintainer
+ * 2. The output contains the trust registry operations
+ * 3. The output is named by the given name
+ */
 @scalus.Compile
 object SindleMaintainer  {
 
@@ -39,7 +46,7 @@ object SindleMaintainer  {
    */
   def mintingPolicy(pkh: PubKeyHash, registryName: ByteString)(ctx: ScriptContext): Unit = {
     val txInfo = ctx.txInfo
-    
+
     val ownSym = ctx.scriptInfo match
       case ScriptInfo.MintingScript(sym) => sym
       case _ => throw new Exception("Minting script is expected")
