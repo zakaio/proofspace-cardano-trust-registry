@@ -27,7 +27,7 @@ object SindleMaintainer  {
    * but do not verify this.
    */
   def verifyPkh(pkh: PubKeyHash)(ctx: ScriptContext) = {
-       scalus.prelude.List.findOrFail(ctx.txInfo.signatories)(_ == pkh)
+       scalus.prelude.List.findOrFail(ctx.txInfo.signatories)(_ === pkh)
   }
 
 
@@ -72,7 +72,7 @@ object SindleMaintainer  {
               case _ => false
           case _ => false
     }
-    
+
     if (scalus.prelude.List.isEmpty(myOutputs)) then
       throw new Exception("No outputs with the given name")
 

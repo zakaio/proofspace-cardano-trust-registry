@@ -19,15 +19,15 @@ object PreludeListData {
   def listFromData[T:FromData](data: scalus.builtin.Data): scalus.prelude.List[T] = {
     val s = Builtins.unListData(data)
     // here are reversed order of elements
-    buidtinToPrelude(s, scalus.prelude.List.Nil)
+    builtinToPrelude(s, scalus.prelude.List.Nil)
   }
   
-  def buidtinToPrelude[T:FromData](bultinList: scalus.builtin.List[Data], acc: scalus.prelude.List[T]): scalus.prelude.List[T] = {
+  def builtinToPrelude[T:FromData](bultinList: scalus.builtin.List[Data], acc: scalus.prelude.List[T]): scalus.prelude.List[T] = {
     if (bultinList.isEmpty) then
       acc
     else
       val x = summon[FromData[T]](bultinList.head)
-      buidtinToPrelude(bultinList.tail, scalus.prelude.List.Cons(x, acc))
+      builtinToPrelude(bultinList.tail, new scalus.prelude.List.Cons(x, acc))
   }
   
   

@@ -102,18 +102,20 @@ enum TrustRegistryOperation  {
 
 }
 
+@scalus.Compile
 object TrustRegistryOperation {
 
   given ToData[TrustRegistryOperation] = (op:TrustRegistryOperation) => {
     op match
-      case x@TrustRegistryOperation.AddDids(dids) =>
+      case TrustRegistryOperation.AddDids(dids) =>
         val dd = PreludeListData.listToData(dids)
         Builtins.constrData(0, scalus.builtin.List(dd) )
-      case x@TrustRegistryOperation.RemoveDids(did) =>
+      case TrustRegistryOperation.RemoveDids(did) =>
         val dd = PreludeListData.listToData(did)
         Builtins.constrData(1, scalus.builtin.List(dd) )
-      case x@TrustRegistryOperation.ChangeName(name: ByteString) =>
-        Builtins.constrData(2, scalus.builtin.List(Data.B(x.name)) )
+      case TrustRegistryOperation.ChangeName(name) =>
+        val dn: Data = Data.B(name)
+        Builtins.constrData(2, scalus.builtin.List(dn))
   }
 
   given FromData[TrustRegistryOperation] = FromData.deriveCaseClass[TrustRegistryOperation]
