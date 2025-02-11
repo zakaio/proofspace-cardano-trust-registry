@@ -45,7 +45,7 @@ object SindleMaintainer  {
    * Check minting policy for the single-maintainer trust registry.
    */
   def mintingPolicy(pkhBytes: ByteString, registryName: ByteString)(ctx: ScriptContext): Unit = {
-    val pkh = PubKeyHash(pkhBytes)
+    val pkh = new PubKeyHash(pkhBytes)
     val txInfo = ctx.txInfo
 
     val ownSym = ctx.scriptInfo match
