@@ -51,13 +51,15 @@ export class RegistryApi extends ListItemApi<Registry, RegistryApiObject> {
     const resp = await httpGetJSON(
       `${appConfig().BACKEND}/trust-registry${conditionToQueryString(condition, converterObject)}`
     );
-    return resp;
+    console.log('resp', resp);
+    return {itemsTotal: resp.itemsTotal || 0, items: resp.items || []};
   }
 
   protected async fetchCreate(item: RegistryApiObject): Promise<RegistryApiObject> {
     // return item;
     const d: any = {...item};
     delete d.id;
+    delete d.lastChangeDate;
     const created = await httpPostJSON(`${appConfig().BACKEND}/trust-registry`, d);
     return created;
   }

@@ -13,6 +13,8 @@ export interface ErrorHandleOptions {
   parser?: (err: any) => {error: string; stackTrace?: string};
 }
 
+const defCfg= (): AxiosRequestConfig => ({/*withCredentials: true*/});
+
 export const token = () => {
   const tkn = localStorage.getItem(TOKEN_NAME);
   return tkn || undefined;
@@ -114,7 +116,7 @@ export const httpGetJSON = async (
   opt?: ErrorHandleOptions
 ): Promise<any> => {
   try {
-    const result = await Axios.get(url, addToken({withCredentials: true}, token));
+    const result = await Axios.get(url, addToken(defCfg(), token));
     return result.data;
   } catch (err) {
     handleHTTPError(err, opt);
@@ -129,7 +131,7 @@ export const httpGetDownload = async (
   try {
     const result = await Axios.get(
       url,
-      addToken({withCredentials: true, responseType: 'blob'}, token)
+      addToken({...defCfg(), responseType: 'blob'}, token)
     );
     return result.data;
   } catch (err) {
@@ -150,7 +152,7 @@ export const httpPostJSON = async (
       addToken(
         {
           headers: {Accept: 'application/json'},
-          withCredentials: true
+          ...defCfg()
         },
         token
       )
@@ -173,7 +175,7 @@ export const httpPostRaw = async (
       data,
       addToken(
         {
-          withCredentials: true
+          ...defCfg()
         },
         token
       )
@@ -196,7 +198,7 @@ export const httpPostDownload = async (
       data,
       addToken(
         {
-          withCredentials: true,
+          ...defCfg(),
           responseType: 'blob'
         },
         token
@@ -221,7 +223,7 @@ export const httpPutJSON = async (
       addToken(
         {
           headers: {Accept: 'application/json'},
-          withCredentials: true
+          ...defCfg()
         },
         token
       )
@@ -245,7 +247,7 @@ export const httpPutRaw = async (
       addToken(
         {
           headers: {},
-          withCredentials: true
+          ...defCfg()
         },
         token
       )
@@ -274,7 +276,7 @@ export const httpPostFormUrlencoded = async (
 
 export const httpPostEmpty = async (url: string, token?: string, opt?: ErrorHandleOptions) => {
   try {
-    const result = await Axios.post(url, undefined, addToken({withCredentials: true}, token));
+    const result = await Axios.post(url, undefined, addToken(defCfg(), token));
     return result.data;
   } catch (err) {
     handleHTTPError(err, opt);
@@ -283,7 +285,7 @@ export const httpPostEmpty = async (url: string, token?: string, opt?: ErrorHand
 
 export const httpDelete = async (url: string, token?: string, opt?: ErrorHandleOptions) => {
   try {
-    const result = await Axios.delete(url, addToken({withCredentials: true}, token));
+    const result = await Axios.delete(url, addToken(defCfg(), token));
     return result.data;
   } catch (err) {
     handleHTTPError(err, opt);
@@ -308,7 +310,7 @@ export const httpPutFile = async (
           headers: {
             'Content-Type': 'multipart/form-data'
           },
-          withCredentials: true
+          ...defCfg()
         },
         token
       )

@@ -23,7 +23,7 @@ export const registrySlice = createSlice({
       state.isLoading = true;
     },
     setRegistries: (state, action: PayloadAction<ItemsState<Registry>>) => {
-      state.items = action.payload.items;
+      state.items = action.payload.items || [];
       state.itemsTotal = action.payload.itemsTotal;
       state.itemsPerPage = action.payload.itemsPerPage;
       state.currentPage = action.payload.currentPage;
@@ -38,6 +38,7 @@ const {setLoading, setRegistries} = registrySlice.actions;
 export const getRegistries = createAsyncThunk(
   'get-registries',
   async (arg: {currentPage: number, itemsPerPage: number, filter: string}, {dispatch}) => {
+    console.log('get registries');
     dispatch(setLoading());
     currentPage = arg.currentPage;
     itemsPerPage = arg.itemsPerPage;
@@ -47,8 +48,9 @@ export const getRegistries = createAsyncThunk(
       offset = 0;
     }
 
+    console.log('lets start');
     const res = await registryApi.list({range: {limit: itemsPerPage, offset}, commonFilter: filter});
-
+    console.log(res);
     dispatch(setRegistries({ ...res, currentPage, itemsPerPage, filter}));
   }
 );
