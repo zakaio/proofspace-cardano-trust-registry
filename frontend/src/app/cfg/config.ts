@@ -1,6 +1,6 @@
 class ConfigData {
   readonly ZAKA_BACKEND: string = process.env.REACT_APP_ZAKA_BACKEND || 'https://test.proofspace.id/zaka';
-  readonly BACKEND: string = process.env.REACT_APP_BACKEND || 'https://test.proofspace.id/login-server';
+  readonly BACKEND: string = process.env.REACT_APP_BACKEND || 'https://test.proofspace.id/trustregistry';
   readonly ROOT: string = process.env.REACT_APP_ROOT_PATH || '/';
   readonly NETWORK: string = process.env.REACT_APP_NETWORK || 'test';
   // readonly FRONT_HOST: string = process.env.REACT_APP_FRONT_HOST || 'test.proofspace.id';

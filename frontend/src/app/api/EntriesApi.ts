@@ -75,13 +75,27 @@ export class EntriesApi extends ListItemApi<Entry, EntryApiObject, string> {
     )
   }
 
+  async approveChanges(registryId: string, changeId: string) {
+    return await httpPostJSON(
+      `${appConfig().BACKEND}/trust-registry/${registryId}/change/${changeId}/approve`,
+      {}
+    )
+  }
+
+  async rejectChanges(registryId: string, changeId: string) {
+    return await httpPostJSON(
+      `${appConfig().BACKEND}/trust-registry/${registryId}/change/${changeId}/reject`,
+      {}
+    )
+  }
+
   protected async fetchOne(condition?: GetCondition<string>): Promise<EntryApiObject> {
     const id = condition && condition.identity ? condition.identity : '';
     return await httpGetJSON(`${appConfig().BACKEND}/trust-registry/${encodeURI(id as string)}`);
   }
 
   protected async fetchList(condition?: GetCondition<string>) {
-    return {itemsTotal: 32, items: FAKE};
+    // return {itemsTotal: 32, items: FAKE};
     const resp = await httpGetJSON(
       `${appConfig().BACKEND}/trust-registry/${condition?.parent || ''}/entries${conditionToQueryString(condition, converterObject)}`
     );
@@ -90,10 +104,10 @@ export class EntriesApi extends ListItemApi<Entry, EntryApiObject, string> {
 
   protected async fetchCreate(item: EntryApiObject): Promise<EntryApiObject> {
     return item;
-    const d: any = {...item};
+    /*const d: any = {...item};
     delete d.id;
     const created = await httpPostJSON(`${appConfig().BACKEND}/project`, d);
-    return created;
+    return created;*/
   }
 
   protected async fetchSave(item: EntryApiObject, opt?: ChangeOptions<string>): Promise<void> {
@@ -104,7 +118,7 @@ export class EntriesApi extends ListItemApi<Entry, EntryApiObject, string> {
   }
 
   protected async fetchDelete(item: EntryApiObject): Promise<void> {
-    await httpDelete(`${appConfig().BACKEND}/project/${encodeURI(item.did)}`);
+    // await httpDelete(`${appConfig().BACKEND}/project/${encodeURI(item.did)}`);
   }
 
 }

@@ -47,7 +47,7 @@ export class RegistryApi extends ListItemApi<Registry, RegistryApiObject> {
   }
 
   protected async fetchList(condition?: GetCondition) {
-    return {itemsTotal: 35, items: FAKE};
+    // return {itemsTotal: 35, items: FAKE};
     const resp = await httpGetJSON(
       `${appConfig().BACKEND}/trust-registry${conditionToQueryString(condition, converterObject)}`
     );
@@ -55,7 +55,7 @@ export class RegistryApi extends ListItemApi<Registry, RegistryApiObject> {
   }
 
   protected async fetchCreate(item: RegistryApiObject): Promise<RegistryApiObject> {
-    return item;
+    // return item;
     const d: any = {...item};
     delete d.id;
     const created = await httpPostJSON(`${appConfig().BACKEND}/trust-registry`, d);
@@ -63,7 +63,7 @@ export class RegistryApi extends ListItemApi<Registry, RegistryApiObject> {
   }
 
   protected async fetchSave(item: RegistryApiObject, opt?: ChangeOptions): Promise<void> {
-    console.log('i call save');
+    // console.log('i call save');
     const prevName = opt ? opt.prevIdentity : item.id;
     await httpPostJSON(`${appConfig().BACKEND}/trust-registry/${encodeURI(prevName as string)}`, item);
   }
