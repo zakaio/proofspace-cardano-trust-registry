@@ -131,4 +131,28 @@ object TrustRegistryOperation {
   
 }
 
+enum TrustRegistryDatum {
+  case Operations(ops: scalus.prelude.List[TrustRegistryOperation])
+  case SeeReferenceIndex(index: BigInt)
+}
+
+@scalus.Compile
+object TrustRegistryDatum {
+
+  given ToData[TrustRegistryDatum] = (datum: TrustRegistryDatum) => {
+    datum match
+      case TrustRegistryDatum.Operations(ops) =>
+        val opsData = TrustRegistryOperation.listOperationsToData(ops)
+        Builtins.constrData(0, scalus.builtin.List(opsData))
+      case TrustRegistryDatum.SeeReferenceIndex(index) =>
+        val idxData: Data = Data.I(index)
+        Builtins.constrData(1, scalus.builtin.List(idxData))
+  }
+
+  given FromData[TrustRegistryDatum] = FromData.deriveCaseClass[TrustRegistryDatum]
+
+
+}
+
+
 

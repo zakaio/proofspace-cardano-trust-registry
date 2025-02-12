@@ -1,7 +1,7 @@
 package proofspace.trustregistry.onchain
 
 import proofspace.trustregistry.common.PreludeListData
-import proofspace.trustregistry.model.{TrustRegistryChange, TrustRegistryOperation}
+import proofspace.trustregistry.model.{TrustRegistryChange, TrustRegistryDatum, TrustRegistryOperation}
 import scalus.builtin.{ByteString, Data}
 import scalus.builtin.Data.FromData
 import scalus.ledger.api.v2.OutputDatum
@@ -41,6 +41,16 @@ object SindleMaintainer  {
     !(scalus.prelude.List.isEmpty(operations))
   }
 
+  def retrieveDatum(txOut: TxOut, txInfo: TxInfo ): Datum = {
+    txOut.datum match
+      case OutputDatum.NoOutputDatum => throw new Exception("No datum in the output")
+      case OutputDatum.OutputDatum(d) => d
+      case OutputDatum.OutputDatumHash(datumHash) =>
+        AssocMap.lookup(txInfo.data)(datumHash) match
+          case Just(d) => d
+          case _ => throw new Exception("Unknown datum hash in the output")
+  }
+  
   /**
    * Check minting policy for the single-maintainer trust registry.
    */
@@ -59,17 +69,18 @@ object SindleMaintainer  {
         AssocMap.lookup(txOut.value)(ownSym) match
           case Just(byNames) =>
             AssocMap.lookup(byNames)(registryName) match
-              case Just(v) =>
-                val datum = txOut.datum match
-                  case OutputDatum.NoOutputDatum => throw new Exception("No datum in the output")
-                  case OutputDatum.OutputDatum(d) => d
-                  case OutputDatum.OutputDatumHash(datumHash) =>
-                    AssocMap.lookup(ctx.txInfo.data)(datumHash) match
-                      case Maybe.Just(d) => d
-                      case Maybe.Nothing => throw new Exception("Unknown datum hash in the output")
-                val operations = PreludeListData.listFromData[TrustRegistryOperation](datum)
-                true
-              case _ => false
+              case Maybe.Just(v) =>
+                val datum = retrieveDatum(txOut, txInfo)
+                val ops = summon[FromData[TrustRegistryDatum]](datum) match
+                  case TrustRegistryDatum.Operations(ops) => ops
+                  case TrustRegistryDatum.SeeReferenceIndex(idx) =>
+                    val referenceInput = scalus.prelude.List.getByIndex(txInfo.referenceInputs)(idx)
+                    val refDatum = retrieveDatum(referenceInput.resolved, txInfo)
+                    summon[FromData[TrustRegistryDatum]](refDatum) match
+                      case TrustRegistryDatum.Operations(ops) => ops
+                      case _ => throw new Exception("SeeReferenceIndex should point to the operations")
+                !scalus.prelude.List.isEmpty(ops)
+              case Maybe.Nothing => false
           case _ => false
     }
 

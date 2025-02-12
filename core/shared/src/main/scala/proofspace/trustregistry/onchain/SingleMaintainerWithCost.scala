@@ -1,3 +1,7 @@
 package proofspace.trustregistry.onchain
 
-class SingleMaintainerWithCost
+class SingleMaintainerWithCost {
+  
+  
+  
+}
