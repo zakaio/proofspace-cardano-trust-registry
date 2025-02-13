@@ -41,6 +41,10 @@ export class RegistryApi extends ListItemApi<Registry, RegistryApiObject> {
     super(new RegistryConverter());
   }
 
+  async getNetworks() {
+    return await httpGetJSON(`${appConfig().BACKEND}/network-choice`);
+  }
+
   protected async fetchOne(condition?: GetCondition): Promise<RegistryApiObject> {
     const id = condition && condition.identity ? condition.identity : '';
     return await httpGetJSON(`${appConfig().BACKEND}/trust-registry/${encodeURI(id as string)}`);

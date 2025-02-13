@@ -5,8 +5,11 @@ import {localize} from "../../app/cfg/Language";
 import Panel from "../Panel";
 import {calculatePopUpSizes} from "../../utils/domUtil";
 import {Button, TextField} from "@mui/material";
-import {useDidMount} from "../../app/hooks";
+import {useAppSelector, useDidMount} from "../../app/hooks";
 import AlignedHGroup from "../AlignedHGroup";
+import {LabeledItem} from "../LabeledItem";
+import {find} from "lodash";
+import {PrettyDropSelector} from "../DropSelector";
 
 interface Props {
   open: boolean;
@@ -21,19 +24,53 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
   const [subnetwork, setSubnetwork] = useState('');
   const [didPrefix, setDidPrefix] = useState('');
 
+  const networks = useAppSelector((state) => state.registry.networks);
+  console.log('nets', networks);
+
   useEffect(() => {
     setName(item?.name || '');
-    setNetwork(item?.network || '');
-    setSubnetwork(item?.subnetwork || '');
+    const defNet = item?.network ?
+      find(networks, (n) => n.network === item.network) :
+      networks[0];
+    console.log('lets select', item?.network, defNet?.network);
+    setNetwork(item?.network || defNet?.network || '');
+    let defSubNet = '';
+    if (defNet && defNet.subnetworks && defNet.subnetworks.length) {
+      defSubNet = defNet.subnetworks[0];
+    }
+    setSubnetwork(item?.subnetwork || defSubNet);
     setDidPrefix(item?.didPrefix || '');
-  }, [item]);
+  }, [item, networks]);
 
   const submit = () => {
     onSave({identity: item ? item.identity : '', name, network, subnetwork, didPrefix, lastChangeDate: ''})
   };
 
+  const onNetworkChange = (v: string) => {
+    const net = find(networks, (n) => n.network === v);
+    if (net) {
+      let subNet = '';
+      if (net && net.subnetworks && net.subnetworks.length) {
+        subNet = net.subnetworks[0];
+      }
+      setNetwork(v);
+      setSubnetwork(subNet);
+    }
+  };
+
   const sizes = calculatePopUpSizes({width: 600, height: 800}, {width: 400, height: 450});
   const height = (sizes.height as number) - 192;
+
+  const networkItems: LabeledItem[] =
+    networks.map((n) => ({label: n.network, value: n.network}));
+  const selectedNetwork = find(networks, (n) => n.network === network);
+  console.log('selected network', selectedNetwork);
+  let subNetItems: LabeledItem[] = [];
+  if (selectedNetwork && selectedNetwork.subnetworks) {
+    console.log('yes. we have subnets', selectedNetwork.subnetworks);
+    subNetItems = selectedNetwork.subnetworks.map((s) => ({label: s, value: s}));
+  }
+  console.log('subNetItems', subNetItems);
 
   return (
     <PopUp
@@ -60,30 +97,17 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
           <AlignedHGroup style={{paddingTop: 32}}>
             <div style={{width: 155, color: '#8E8E8E'}}>{localize('NETWORK')}</div>
             <div style={{width: 315}}>
-              <TextField
-                style={{width: 300}}
-                error={!network}
-                value={network}
-                onChange={(evt) => setNetwork(evt.target.value)}
-                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
-                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
-                variant="outlined"
-              />
+              <PrettyDropSelector items={networkItems} selected={network} onChange={onNetworkChange}/>
             </div>
           </AlignedHGroup>
-          <AlignedHGroup style={{paddingTop: 32}}>
-            <div style={{width: 155, color: '#8E8E8E'}}>{localize('SUB_NETWORK')}</div>
-            <div style={{width: 315}}>
-              <TextField
-                style={{width: 300}}
-                value={subnetwork}
-                onChange={(evt) => setSubnetwork(evt.target.value)}
-                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
-                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
-                variant="outlined"
-              />
-            </div>
-          </AlignedHGroup>
+          {!!subNetItems.length && (
+            <AlignedHGroup style={{paddingTop: 32}}>
+              <div style={{width: 155, color: '#8E8E8E'}}>{localize('SUB_NETWORK')}</div>
+              <div style={{width: 315}}>
+                <PrettyDropSelector items={subNetItems} selected={subnetwork} onChange={(v) => setSubnetwork(v)}/>
+              </div>
+            </AlignedHGroup>
+          )}
           <AlignedHGroup style={{paddingTop: 32}}>
             <div style={{width: 155, color: '#8E8E8E'}}>{localize('DID_PREFIX')}</div>
             <div style={{width: 315}}>

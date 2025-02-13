@@ -19,13 +19,14 @@ interface Props<T> {
   items: T[];
   columns: Column<T>[];
   onSelect?: (item: T) => void;
+  maxHeight: number;
 }
 
 const TableList = <T,>(props: Props<T>) => {
-  const {items, columns, onSelect} = props;
+  const {items, columns, onSelect, maxHeight} = props;
   return (
     <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-      <TableContainer sx={{ maxHeight: 440 }}>
+      <TableContainer sx={{ maxHeight }}>
         <Table stickyHeader aria-label="sticky table">
           <TableHead>
             <TableRow>

@@ -19,6 +19,7 @@ import EditRegistryPopUp from "./EditRegistryPopUp";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import {WarningPopUp} from "../WarningPopUp";
+import {getWorkAreaSizes} from "../../utils/domUtil";
 
 const RegistryList: FC<{}> = () => {
   const navigate = useNavigate();
@@ -95,6 +96,8 @@ const RegistryList: FC<{}> = () => {
     }
   ];
 
+  const sizes = getWorkAreaSizes();
+
   return (
     <Box width={'100%'}>
       <EditRegistryPopUp open={open} item={selected} onCancel={() => setOpen(false)} onSave={onSave}/>
@@ -140,7 +143,7 @@ const RegistryList: FC<{}> = () => {
         <div style={{paddingTop: 16}}/>
         {isLoading ?
           (<LoaderView/>) :
-          (<TableList items={items} columns={columns} onSelect={onSelect}/>)
+          (<TableList items={items} columns={columns} onSelect={onSelect} maxHeight={sizes.height - 64}/>)
         }
       </Box>
       <div style={{paddingTop: 16}}/>

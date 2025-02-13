@@ -1,13 +1,18 @@
 import {createAsyncThunk, createSlice, PayloadAction} from "@reduxjs/toolkit";
 import {ItemsState} from "./base";
 import {entriesApi, registryApi} from "../api/API";
-import {Registry} from "../../domain/Registry";
+import {Network, Registry} from "../../domain/Registry";
 
 let itemsPerPage = 9;
 let currentPage = 1;
 let filter = '';
 
-const initialState: ItemsState<Registry> = {
+interface RegistryState extends ItemsState<Registry>{
+  networks: Network[];
+}
+
+const initialState: RegistryState = {
+  networks: [],
   items: [],
   itemsTotal: 0,
   currentPage: 1,
@@ -30,16 +35,22 @@ export const registrySlice = createSlice({
       state.filter = action.payload.filter;
       state.isLoading = false;
     },
+    setNetworks: (state, action: PayloadAction<Network[]>) => {
+      state.networks = action.payload;
+    }
   }
 });
 
-const {setLoading, setRegistries} = registrySlice.actions;
+const {setLoading, setRegistries, setNetworks} = registrySlice.actions;
 
 export const getRegistries = createAsyncThunk(
   'get-registries',
   async (arg: {currentPage: number, itemsPerPage: number, filter: string}, {dispatch}) => {
-    console.log('get registries');
     dispatch(setLoading());
+
+    const netResp = await registryApi.getNetworks();
+    dispatch(setNetworks(netResp.items || []));
+
     currentPage = arg.currentPage;
     itemsPerPage = arg.itemsPerPage;
     filter = arg.filter;
@@ -48,9 +59,7 @@ export const getRegistries = createAsyncThunk(
       offset = 0;
     }
 
-    console.log('lets start');
     const res = await registryApi.list({range: {limit: itemsPerPage, offset}, commonFilter: filter});
-    console.log(res);
     dispatch(setRegistries({ ...res, currentPage, itemsPerPage, filter}));
   }
 );

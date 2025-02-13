@@ -47,7 +47,7 @@ let isSideBarMinimized = false;
 export const changeSideBarState = (isMinimized: boolean) => isSideBarMinimized = isMinimized;
 
 export const getWorkAreaSizes = () => {
-  const delta = isSideBarMinimized ? 56 : 200;
+  const delta = 64; // isSideBarMinimized ? 56 : 200;
   const width = document.documentElement.clientWidth - delta;
   const height = document.documentElement.clientHeight - 65;
   return {width, height};

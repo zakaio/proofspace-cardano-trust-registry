@@ -25,7 +25,7 @@ const ChangesPopUp: FC<Props> = ({added, removed, open, onSave, onCancel}) => {
   }, [added, removed]);
 
   const submit = () => {
-    onSave(addedList.split('\n'), removedList.split('\n'));
+    onSave(addedList.split('\n').filter((s) => !!s), removedList.split('\n').filter((s) => !!s));
   };
 
   const sizes = calculatePopUpSizes({width: 600, height: 800}, {width: 400, height: 450});

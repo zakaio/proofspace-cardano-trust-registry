@@ -1,5 +1,5 @@
 import {FC, useState} from "react";
-import {Box, Breadcrumbs, Button, Table} from "@mui/material";
+import {Box, Breadcrumbs, Button, IconButton, Table} from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import ContentHeader from "../ContentHeader";
 import AlignedHGroup from "../AlignedHGroup";
@@ -10,12 +10,65 @@ import SearchBar from "../SearchBar";
 import Paginator from "../Paginator";
 import {LoaderView} from "../LoaderView";
 import TableList, {Column} from "../TableList";
-import {Entry} from "../../domain/Entry";
-import {getEntries, proposeChanges} from "../../app/state/entries";
+import {Change, Entry} from "../../domain/Entry";
+import {approveChanges, getEntries, proposeChanges, rejectChanges} from "../../app/state/entries";
 import {Link, useParams} from "react-router-dom";
 import {createLink} from "../../app/cfg/config";
 import {MainPath} from "../../app/cfg/RoutePath";
 import ChangesPopUp from "./ChangesPopUp";
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import dateFormat from "dateformat";
+import {getWorkAreaSizes} from "../../utils/domUtil";
+
+interface ProposedChangeProps {
+  change?: Change;
+  onAprove: (change: Change) => void;
+  onReject: (change: Change) => void;
+}
+const ProposedChangeRenderer: FC<ProposedChangeProps> = ({change, onAprove, onReject}) => {
+  if (!change) {
+    return (<div/>);
+  }
+  const approveHandler = (evt: any) => {
+    evt.stopPropagation();
+    evt.preventDefault();
+    onAprove(change);
+  };
+
+  const rejectHandler = (evt: any) => {
+    evt.stopPropagation();
+    evt.preventDefault();
+    onReject(change);
+  };
+
+  return (
+    <div>
+      <div>{change.status.type}</div>
+      <div style={{color: '#BAB8B5', fontSize: 12}}>{dateFormat(change.changeDate, "yyyy-mm-dd\'T\'HH:MM:ss")}</div>
+      <AlignedHGroup>
+        <div>
+          <IconButton onClick={approveHandler}>
+            <ThumbUpIcon style={{color: '#26C446'}}/>
+          </IconButton>
+        </div>
+        <div>
+          <IconButton onClick={rejectHandler}>
+            <ThumbDownIcon style={{color: '#E51E13'}}/>
+          </IconButton>
+        </div>
+      </AlignedHGroup>
+    </div>
+  );
+};
+
+const AcceptedChangeRenderer: FC<{change?: Change}> = ({change}) => {
+  if (!change) {
+    return (<div/>);
+  }
+
+  return (<div>{change.status.type}</div>);
+};
 
 const EntriesList: FC<{}> = () => {
   const [open, setOpen] = useState(false);
@@ -39,10 +92,41 @@ const EntriesList: FC<{}> = () => {
     dispatch(proposeChanges({registryId: id || '', added, removed}));
   }
 
+  const onApprove = (change: Change) => dispatch(approveChanges({registryId: id || '', changeId: change.identity}));
+
+  const onReject = (change: Change) => dispatch(rejectChanges({registryId: id || '', changeId: change.identity}));
+
   const columns: Column<Entry>[] = [
     {id: "identity", label: localize('DID')},
-    {id: "status", label: localize('Status')},
+    {
+      id: "status",
+      label: localize('Status'),
+      renderer: (item) => (<div>{item.status ? item.status.type : 'unknown'}</div>)
+    },
+    {
+      id: 'proposedChange',
+      label: localize('PROPOSED_CHANGE'),
+      renderer: (item) => (
+        <ProposedChangeRenderer
+          change={item.proposedChange}
+          onAprove={onApprove}
+          onReject={onReject}
+        />
+      )
+    },
+    {
+      id: 'acceptedChange',
+      label: localize('ACCEPTED_CHANGE'),
+      renderer: (item) => (
+        <AcceptedChangeRenderer
+          change={item.acceptedChange}
+        />
+      )
+    }
+
   ];
+
+  const sizes = getWorkAreaSizes();
 
   return (
     <Box width={'100%'}>
@@ -83,7 +167,7 @@ const EntriesList: FC<{}> = () => {
         <div style={{paddingTop: 16}}/>
         {isLoading ?
           (<LoaderView/>) :
-          (<TableList items={items} columns={columns}/>)
+          (<TableList items={items} columns={columns} maxHeight={sizes.height - 64}/>)
         }
       </Box>
       <div style={{paddingTop: 16}}/>

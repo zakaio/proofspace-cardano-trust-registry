@@ -63,3 +63,21 @@ export const proposeChanges = createAsyncThunk(
     dispatch(getEntries({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
   }
 );
+
+export const approveChanges = createAsyncThunk(
+  'approve-changes',
+  async (arg: {registryId: string, changeId: string}, {dispatch}) => {
+    dispatch(setLoading());
+    await entriesApi.approveChanges(arg.registryId, arg.changeId);
+    dispatch(getEntries({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
+  }
+);
+
+export const rejectChanges = createAsyncThunk(
+  'approve-changes',
+  async (arg: {registryId: string, changeId: string}, {dispatch}) => {
+    dispatch(setLoading());
+    await entriesApi.rejectChanges(arg.registryId, arg.changeId);
+    dispatch(getEntries({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
+  }
+);

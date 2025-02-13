@@ -3,27 +3,27 @@ import {appConfig} from "../cfg/config";
 import {conditionToQueryString} from "./QueryString";
 import {Converter} from "./Converter";
 import {ChangeOptions, GetCondition, ListItemApi} from "./ListItemApi";
-import {Change, Entry} from "../../domain/Entry";
+import {Change, ChangeStatus, Entry, EntryStatus} from "../../domain/Entry";
 
 interface ChangeApiObject {
   changeId: string;
-  status: any;
+  status: ChangeStatus;
   changeDate: string;
 }
 
 interface EntryApiObject {
   did: string;
-  status: any;
-  acceptedChange: ChangeApiObject;
-  proposedChange: ChangeApiObject;
+  status: EntryStatus;
+  acceptedChange?: ChangeApiObject;
+  proposedChange?: ChangeApiObject;
 }
 
 const FAKE: EntryApiObject[] = [
-  {did: '123', status: 'some', proposedChange: {changeId: '1', status: '', changeDate: '123'}, acceptedChange: {changeId: '0', status: 's', changeDate: ''}},
-  {did: '234', status: 'ret', proposedChange: {changeId: '1', status: '', changeDate: '123'}, acceptedChange: {changeId: '0', status: 's', changeDate: ''}},
-  {did: '345', status: 'poi', proposedChange: {changeId: '1', status: '', changeDate: '123'}, acceptedChange: {changeId: '0', status: 's', changeDate: ''}},
-  {did: '567', status: 'bebe', proposedChange: {changeId: '1', status: '', changeDate: '123'}, acceptedChange: {changeId: '0', status: 's', changeDate: ''}},
-  {did: '678', status: 'ahaha', proposedChange: {changeId: '1', status: '', changeDate: '123'}, acceptedChange: {changeId: '0', status: 's', changeDate: ''}},
+  {did: '123', status: {type: 'some'}, proposedChange: {changeId: '1', status: {type: ''}, changeDate: '123'}, acceptedChange: {changeId: '0', status: {type: 's'}, changeDate: ''}},
+  {did: '234', status: {type: 'ret'}, proposedChange: {changeId: '1', status: {type: ''}, changeDate: '123'}, acceptedChange: {changeId: '0', status: {type: 's'}, changeDate: ''}},
+  {did: '345', status: {type: 'poi'}, proposedChange: {changeId: '1', status: {type: ''}, changeDate: '123'}, acceptedChange: {changeId: '0', status: {type: 's'}, changeDate: ''}},
+  {did: '567', status: {type: 'bebe'}, proposedChange: {changeId: '1', status: {type: ''}, changeDate: '123'}, acceptedChange: {changeId: '0', status: {type: 's'}, changeDate: ''}},
+  {did: '678', status: {type: 'ahaha'}, proposedChange: {changeId: '1', status: {type: ''}, changeDate: '123'}, acceptedChange: {changeId: '0', status: {type: 's'}, changeDate: ''}},
 ];
 
 class ChangeConverter extends Converter<Change, ChangeApiObject> {
@@ -40,21 +40,31 @@ class EntriesConverter extends Converter<Entry, EntryApiObject> {
   private changeConverter = new ChangeConverter();
   apiObjectToItem(obj: EntryApiObject): Entry {
     const item: Entry = {
-      ...obj,
-      identity: obj.did,
-      acceptedChange: this.changeConverter.apiObjectToItem(obj.acceptedChange),
-      proposedChange: this.changeConverter.apiObjectToItem(obj.proposedChange)
+      // ...obj,
+      status: obj.status,
+      identity: obj.did
+      /*acceptedChange: this.changeConverter.apiObjectToItem(obj.acceptedChange),
+      proposedChange: this.changeConverter.apiObjectToItem(obj.proposedChange)*/
     };
+    if (obj.acceptedChange) {
+      item.acceptedChange =  this.changeConverter.apiObjectToItem(obj.acceptedChange);
+    }
+    if (obj.proposedChange) {
+      item.proposedChange = this.changeConverter.apiObjectToItem(obj.proposedChange);
+    }
     return item;
   }
 
   itemToApiObject(item: Entry): EntryApiObject {
     const res: EntryApiObject = {
-      ...item, did:
-      item.identity,
-      acceptedChange: this.changeConverter.itemToApiObject(item.acceptedChange),
-      proposedChange: this.changeConverter.itemToApiObject(item.proposedChange)
+      status: item.status, did: item.identity
     };
+    if (item.proposedChange) {
+      res.proposedChange = this.changeConverter.itemToApiObject(item.proposedChange);
+    }
+    if (item.acceptedChange) {
+      res.acceptedChange = this.changeConverter.itemToApiObject(item.acceptedChange);
+    }
     return res;
   }
 }
@@ -99,7 +109,8 @@ export class EntriesApi extends ListItemApi<Entry, EntryApiObject, string> {
     const resp = await httpGetJSON(
       `${appConfig().BACKEND}/trust-registry/${condition?.parent || ''}/entries${conditionToQueryString(condition, converterObject)}`
     );
-    return resp;
+    console.log(resp);
+    return {itemsTotal: resp.itemsTotal || 0, items: resp.items || []};
   }
 
   protected async fetchCreate(item: EntryApiObject): Promise<EntryApiObject> {
