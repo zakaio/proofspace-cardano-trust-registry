@@ -20,6 +20,8 @@ trait CardanoOfflineAccess {
 
    def iterateTransactionsTo(address: Address, txId: TxId, n:Int): AddressTransactionAccess
                         
+   def translateUplcToAddress(uplc: scalus.uplc.Term): Address
 
-
+   def translateBeth32ToAddress(bech32: String): Address
+  
 }

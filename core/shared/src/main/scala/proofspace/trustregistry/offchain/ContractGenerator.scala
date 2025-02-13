@@ -35,14 +35,52 @@ trait ContractGenerator {
   def generateVotingAddress(name: String, params: Seq[String]): Address
 
   /**
-   * Generate minting policy for trust registry. Minting policy usually cheks, that
+   * Minting policy for transactions, from wich we restore the trust registry.
+   * @param name
+   * @param contractParameters
+   * @return
+   */
+  def generateTargetMintingPolicy(name: String,
+                                  contractParameters: Seq[String],
+                                 ): scalus.uplc.Term
+
+
+  /**
+   * Generate minting policy for transactions, which submit changes to the trust registry.
+   * If we have a one-step submission (i.e. transaction is sended with the voting tokens, necessary for accepting)
+   * then VotingMintingPolicy is the same as TargetMintingPolicy.
    * @param pkh
    * @param name
    * @param contractParameters
    * @return
    */
-  def generateMintingPolicy(name: String,
+  def generateVotingMintingPolicy(name: String,
                             contractParameters: Seq[String],
                            ): scalus.uplc.Term
+
+
+  protected def cardanoOfflineAccess: CardanoOfflineAccess
+
+  protected def getPkh(params:Seq[String], idx:Int): PubKeyHash = {
+    val pkhBytes = scalus.builtin.ByteString.fromHex(params(idx))
+    PubKeyHash(pkhBytes)
+  }
+
+  protected def getInteger(params:Seq[String], idx:Int): Int = {
+    params(idx).toInt
+  }
+
+  protected def getString(params:Seq[String], idx:Int): String = {
+    params(idx)
+  }
+
+  protected def getAddress(params:Seq[String], idx:Int): Address = {
+    cardanoOfflineAccess.translateBeth32ToAddress(params(idx))
+  }
+
+}
+
+object ContractGenerator {
+
 
 }

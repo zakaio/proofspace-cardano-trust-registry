@@ -19,19 +19,7 @@ import scalus.prelude.Prelude.{*, given}
  */
 @scalus.Compile
 object SindleMaintainer  {
-
-
-  /**
-   * Check, if the given public key hash is verified by the maintainer.
-   * We assume that changes in the trust registry are packet in the transaction,
-   * but do not verify this.
-   */
-  def verifyPkh(pkh: PubKeyHash)(ctx: ScriptContext) = {
-       scalus.prelude.List.findOrFail(ctx.txInfo.signatories)(_ === pkh)
-  }
-
-
-
+  
 
   /**
    * Check, if the given data is a valid trust registry operations.
@@ -41,15 +29,7 @@ object SindleMaintainer  {
     !(scalus.prelude.List.isEmpty(operations))
   }
 
-  def retrieveDatum(txOut: TxOut, txInfo: TxInfo ): Datum = {
-    txOut.datum match
-      case OutputDatum.NoOutputDatum => throw new Exception("No datum in the output")
-      case OutputDatum.OutputDatum(d) => d
-      case OutputDatum.OutputDatumHash(datumHash) =>
-        AssocMap.lookup(txInfo.data)(datumHash) match
-          case Just(d) => d
-          case _ => throw new Exception("Unknown datum hash in the output")
-  }
+  
   
   /**
    * Check minting policy for the single-maintainer trust registry.
@@ -62,28 +42,10 @@ object SindleMaintainer  {
       case ScriptInfo.MintingScript(sym) => sym
       case _ => throw new Exception("Minting script is expected")
 
-    val unused = verifyPkh(pkh)(ctx)
+    val unused = MintingPolicyElements.verifyPkh(pkh)(ctx)
 
-    val myOutputs = scalus.prelude.List.filter(txInfo.outputs){
-      txOut =>
-        AssocMap.lookup(txOut.value)(ownSym) match
-          case Just(byNames) =>
-            AssocMap.lookup(byNames)(registryName) match
-              case Maybe.Just(v) =>
-                val datum = retrieveDatum(txOut, txInfo)
-                val ops = summon[FromData[TrustRegistryDatum]](datum) match
-                  case TrustRegistryDatum.Operations(ops) => ops
-                  case TrustRegistryDatum.SeeReferenceIndex(idx) =>
-                    val referenceInput = scalus.prelude.List.getByIndex(txInfo.referenceInputs)(idx)
-                    val refDatum = retrieveDatum(referenceInput.resolved, txInfo)
-                    summon[FromData[TrustRegistryDatum]](refDatum) match
-                      case TrustRegistryDatum.Operations(ops) => ops
-                      case _ => throw new Exception("SeeReferenceIndex should point to the operations")
-                !scalus.prelude.List.isEmpty(ops)
-              case Maybe.Nothing => false
-          case _ => false
-    }
-
+    val myOutputs = MintingPolicyElements.filterMinted(ctx, registryName, (txOut, parsedDatum, ops) => true) 
+    
     if (scalus.prelude.List.isEmpty(myOutputs)) then
       throw new Exception("No outputs with the given name")
 

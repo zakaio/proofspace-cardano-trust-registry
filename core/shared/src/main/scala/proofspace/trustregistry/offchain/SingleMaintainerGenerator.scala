@@ -12,7 +12,7 @@ import scalus.uplc.TermDSL.{*, given}
 
 import scala.language.implicitConversions
 
-object SingleMaintainerGenerator extends ContractGenerator {
+class SingleMaintainerGenerator(override val cardanoOfflineAccess: CardanoOfflineAccess) extends ContractGenerator {
 
   val PKH_IDX = 0
 
@@ -20,13 +20,13 @@ object SingleMaintainerGenerator extends ContractGenerator {
     Seq(ContractParameter("maintainer", "Maintainer of the trust registry", ContractParameterType.PubKeyHash))
 
   override def generateTargetAddress(name: String, params:Seq[String]): Address = {
-    val pkh = getPkh(params)
+    val pkh = getPkh(params, PKH_IDX)
     val credenial = PubKeyCredential(pkh)
     val retval = Address(credenial, Maybe.Nothing)
     retval
   }
 
-  override def generateMintingPolicy(name: String, contractParameters: Seq[String]): scalus.uplc.Term = {
+  override def generateTargetMintingPolicy(name: String, contractParameters: Seq[String]): scalus.uplc.Term = {
     val pkhBytes = scalus.builtin.ByteString.fromHex(contractParameters(PKH_IDX))
     val mintingPolicyFun = scalus.Compiler.compile(SindleMaintainer.mintingPolicy(_,_)).toUplc(true)
     val retval = mintingPolicyFun $ pkhBytes $ scalus.builtin.ByteString.fromString(name)
@@ -36,10 +36,10 @@ object SingleMaintainerGenerator extends ContractGenerator {
   override def generateVotingAddress(name: String, params: Seq[String]): Address = {
     generateTargetAddress(name, params)
   }
-
-  def getPkh(patams:Seq[String]): PubKeyHash = {
-    val pkhBytes = scalus.builtin.ByteString.fromHex(patams(PKH_IDX))
-    PubKeyHash(pkhBytes)
+  
+  override def generateVotingMintingPolicy(name: String, contractParameters: Seq[String]): Term = {
+    generateTargetMintingPolicy(name, contractParameters)
   }
+  
 
 }
