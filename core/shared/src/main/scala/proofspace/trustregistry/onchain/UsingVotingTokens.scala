@@ -9,7 +9,8 @@ import scalus.prelude.Prelude.{*, given}
 /**
  * Anybody can submit a change, which is supplement with voting tokens.
  */
-class UsingVotingTokens {
+@scalus.Compile
+object UsingVotingTokens {
 
 
     def  mintingPolicy(registryName: ByteString,
