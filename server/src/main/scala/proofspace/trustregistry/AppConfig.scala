@@ -81,12 +81,14 @@ object ProofspaceConfig {
 }
 
 case class CardanoKeyConfig(
+                           address: Option[String],
                            hash: Option[String],
                            seedPhrase: Option[String],
                            )
 
 object CardanoKeyConfig {
   lazy val default = CardanoKeyConfig(
+    address = Some("address"),
     hash = Some("hash"),
     seedPhrase = Some("seedPhrase")
   )
@@ -96,14 +98,12 @@ object CardanoKeyConfig {
 }
 
 case class ExternalServiceConfig(
-                                did: String,
                                 cardanoKeys: Map[String, CardanoKeyConfig] = Map.empty,
                                 jwtSharedSecret: Option[String] = None
                                 )
 
 object ExternalServiceConfig {
   lazy val default = ExternalServiceConfig(
-    did = "did:example:123",
     cardanoKeys = Map(
       "mainnet" -> CardanoKeyConfig.default,
       "testnet" -> CardanoKeyConfig.default
@@ -122,7 +122,7 @@ case class AppConfig(
                     port: Int = 4612,
                     encodingKeyFile: String = "enckeys.json",
                     proofspace: ProofspaceConfig = ProofspaceConfig.default,
-                    externalServices: Seq[ExternalServiceConfig] = Seq.empty
+                    externalServices: Map[String, ExternalServiceConfig] = Map.empty
                     )  {
   
   def retrieveProofspaceServiceDidAndNetwork(optServiceDid: Option[String], optProofspaceNetwork: Option[String]): (String, String) = {

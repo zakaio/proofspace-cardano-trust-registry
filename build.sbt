@@ -3,7 +3,7 @@
 
 
 val commonSettings = Seq(
-  scalaVersion := "3.6.2",
+  scalaVersion := "3.6.3",
   organization := "id.proofspace",
   scalacOptions ++= Seq(
     "-Xmax-inlines","100",
@@ -45,6 +45,7 @@ lazy val server = project
                    libraryDependencies ++= Seq(
                      "com.bloxbean.cardano" % "cardano-client-lib" % "0.6.3",
                      "com.bloxbean.cardano" % "cardano-client-backend-blockfrost" % "0.6.3",
+                     "org.scalus" %% "scalus-bloxbean-cardano-client-lib" % "0.8.4",
                      "com.softwaremill.sttp.tapir" %% "tapir-netty-server" % tapirVersion,
                      "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % tapirVersion,
                      "com.softwaremill.sttp.tapir" %% "tapir-jsoniter-scala" % tapirVersion,

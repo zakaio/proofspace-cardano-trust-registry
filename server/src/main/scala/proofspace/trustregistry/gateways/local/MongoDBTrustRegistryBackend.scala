@@ -38,11 +38,11 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     logger.debug(s"Creating trust registry ${create.name}")
     val (serviceDid, proofspaceNetwork) = AppContext[AppConfig].retrieveProofspaceServiceDidAndNetwork(create.proofspaceServiceDid, create.proofspaceNetwork)
     val blockchainAdapter = AppContext[BlockchainAdapterService].createBlockchainAdapter(create.network, create.subnetwork)
-    val registryId = blockchainAdapter.createTrustRegistry(create).await
+    val registryId = blockchainAdapter.createTrustRegistry(create, serviceDid, proofspaceNetwork).await
     val entry = TrustRegistryEntry(registryId, create.name,
       create.network, create.subnetwork,
       serviceDid, proofspaceNetwork,
-      create.targetAdderss,
+      create.createTargetAddress,
       Seq.empty)
     val collection = await(retrieveCollection)
     val insertResult = await(collection.insert.one(entry))
@@ -52,7 +52,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     }
     // TODO: receive through the blockchain adapter.
     val now = LocalDateTime.now()
-    TrustRegistryDTO(registryId, create.name, create.network, serviceDid, proofspaceNetwork, create.subnetwork, create.targetAdderss, now)
+    TrustRegistryDTO(registryId, create.name, create.network, serviceDid, proofspaceNetwork, create.subnetwork, create.createTargetAddress, now)
   }
 
   override def listRegistries(query: TrustRegistryQueryDTO, serviceDid: String, proofspaceNetwork: String): Future[TrustRegistriesDTO] = async[Future] {
@@ -88,7 +88,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     ).one[TrustRegistryHeader])
     val registryHeader = optRegistryHeader.getOrElse(throw new Exception(s"Trust registry ${change.registryId} not found"))
     val blockchainAdapter = AppContext[BlockchainAdapterService].createBlockchainAdapter(registryHeader.network, registryHeader.subnetwork)
-    val changeId = blockchainAdapter.createTrustRegistryChangeRequest(change).await
+    val changeId = blockchainAdapter.createTrustRegistryChangeRequest(change, serviceDid, proofspaceNetwork).await
     val didChanges = change.addedDids.map(did => TrustRegistryDidEntryInChange(did, Add))
       ++ change.removedDids.map(did => TrustRegistryDidEntryInChange(did, TrustRegistryProposalStatusDTO.Remove))
 

@@ -20,10 +20,10 @@ trait BlockChainLocalTrustRegistryAdapter  {
    * @param createTrustRegistryDTO
    * @return
    */
-  def createTrustRegistry(createTrustRegistryDTO: CreateTrustRegistryDTO): Future[String]
+  def createTrustRegistry(createTrustRegistryDTO: CreateTrustRegistryDTO, serviceDid: String, proofspaceNetwork: String): Future[String]
 
-  def createTrustRegistryChangeRequest(trustRegistryChangeDTO: TrustRegistryChangeDTO): Future[String]
+  def createTrustRegistryChangeRequest(trustRegistryChangeDTO: TrustRegistryChangeDTO, serviceDid: String, proofspaceNetwork: String): Future[String]
 
-  def monitorInputTransactions(addresses: List[String], listener: BlockChainAddressListener): Future[Unit]
+  def monitorInputTransactions(addresses: List[String], listener: BlockChainAddressListener, serviceDid: String, proofspaceNetwork: String): Future[Unit]
 
 }

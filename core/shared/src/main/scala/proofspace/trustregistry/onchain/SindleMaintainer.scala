@@ -1,32 +1,57 @@
 package proofspace.trustregistry.onchain
 
 import proofspace.trustregistry.common.PreludeListData
-import proofspace.trustregistry.model.{TrustRegistryChange, TrustRegistryOperation}
+import proofspace.trustregistry.model.{TrustRegistryChange, TrustRegistryDatum, TrustRegistryOperation}
 import scalus.builtin.{ByteString, Data}
 import scalus.builtin.Data.FromData
-import scalus.ledger.api.v3.{PubKeyHash, ScriptContext}
-import scalus.prelude.Maybe
+import scalus.ledger.api.v2.OutputDatum
+import scalus.ledger.api.v3.*
+import scalus.prelude.Maybe.Just
+import scalus.prelude.{AssocMap, Maybe}
+import scalus.prelude.Prelude.{*, given}
 
+/**
+ * Single maintainer trust registry.
+ * The check in minting policy is done that:
+ * 1. The output is signed by the maintainer
+ * 2. The output contains the trust registry operations
+ * 3. The output is named by the given name
+ */
 @scalus.Compile
 object SindleMaintainer  {
   
-
-  /**
-   * Check, if the given public key hash is verified by the maintainer.
-   * We assume that changes in the trust registry are packet in the transaction,
-   * but do not verify this.
-   */
-  def verifyMin(pkh: PubKeyHash)(ctx: ScriptContext) = {
-       scalus.prelude.List.findOrFail(ctx.txInfo.signatories)(_ == pkh)
-  }
 
   /**
    * Check, if the given data is a valid trust registry operations.
    */
   def verifyDatum(datum: Data): Boolean = {
     val operations = PreludeListData.listFromData[TrustRegistryOperation](datum)
-    operations != scalus.prelude.List.Nil
+    !(scalus.prelude.List.isEmpty(operations))
   }
+
+  
+  
+  /**
+   * Check minting policy for the single-maintainer trust registry.
+   */
+  def mintingPolicy(pkhBytes: ByteString, registryName: ByteString)(ctx: ScriptContext): Unit = {
+    val pkh = new PubKeyHash(pkhBytes)
+    val txInfo = ctx.txInfo
+
+    val ownSym = ctx.scriptInfo match
+      case ScriptInfo.MintingScript(sym) => sym
+      case _ => throw new Exception("Minting script is expected")
+
+    val unused = MintingPolicyElements.verifyPkh(pkh)(ctx)
+
+    val myOutputs = MintingPolicyElements.filterMinted(ctx, registryName, (txOut, parsedDatum, ops) => true) 
+    
+    if (scalus.prelude.List.isEmpty(myOutputs)) then
+      throw new Exception("No outputs with the given name")
+
+
+  }
+
 
 
 }

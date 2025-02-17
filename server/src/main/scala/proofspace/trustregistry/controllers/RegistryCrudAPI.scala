@@ -27,7 +27,8 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend],
     approveChangeEndpoint,
     rejectChangeEndpoint,
     queryEntriesEndpoint,
-    checkDidEndpoint
+    checkDidEndpoint,
+    networkChoiceEndpoing
   )
 
   val listEndpoint = endpoint.get.in("trust-registry")
