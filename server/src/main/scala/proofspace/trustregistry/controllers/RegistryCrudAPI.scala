@@ -6,6 +6,7 @@ import sttp.tapir.*
 import sttp.tapir.generic.auto.*
 import sttp.tapir.json.jsoniter.*
 import com.github.rssh.appcontext.*
+import org.slf4j.LoggerFactory
 import proofspace.trustregistry.AppConfig
 import proofspace.trustregistry.dto.*
 import proofspace.trustregistry.gateways.TrustRegistryBackend
@@ -17,6 +18,8 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend],
                             AppContextProvider[AppConfig]) extends BaseTapirController {
 
   import scala.concurrent.ExecutionContext.Implicits.global
+
+  val logger = LoggerFactory.getLogger(classOf[RegistryCrudAPI])
 
 
   lazy val endpoints: List[ServerEndpoint[Any,Future]] = List(
@@ -30,6 +33,7 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend],
     checkDidEndpoint,
     networkChoiceEndpoing
   )
+
 
   val listEndpoint = endpoint.get.in("trust-registry")
     .securityIn(auth.bearer[Option[String]]())
@@ -222,12 +226,14 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend],
     }
 
     def handleCreateRegistry(create: CreateTrustRegistryDTO): Future[Either[HttpExceptionDTO,TrustRegistryDTO]] = {
+      logger.debug(s"Creating registry ${create.name}")
       AppContext[TrustRegistryBackend].createRegistry(create).map(Right(_)).recover {
         case ex:HttpException => Left(ex.toDTO)
       }
     }
 
     def handleRemoveRegistry(registryId: String, serviceDid: String, proofspaceNetwork: String): Future[Either[HttpExceptionDTO,Boolean]] = {
+      logger.debug(s"Removing registry $registryId")
       AppContext[TrustRegistryBackend].removeRegistry(registryId, serviceDid, proofspaceNetwork).map(Right(_)).recover {
         case ex:HttpException => Left(ex.toDTO)
       }

@@ -130,11 +130,10 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
       )
     )
     val updateQuery = BSONDocument(
-      "changes" -> BSONDocument(
-        "$pull" -> BSONDocument("changeId" -> changeId)
-      )
+        "$pull" -> BSONDocument("changes" -> BSONDocument("changeId" -> changeId))
     )
-    val updateResult = collection.findAndUpdate[BSONDocument,BSONDocument](searchQuery, updateQuery, fields=Some(TrustRegistryHeader.fields)).await
+    val updateOp = collection.updateModifier(updateQuery, fetchNewObject = true)
+    val updateResult = collection.findAndModify(searchQuery, updateOp, sort=None, fields=Some(TrustRegistryHeader.fields)).await
     updateResult.result[TrustRegistryHeader].isDefined
   }
 

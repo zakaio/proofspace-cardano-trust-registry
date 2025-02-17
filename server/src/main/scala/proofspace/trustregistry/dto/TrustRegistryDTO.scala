@@ -21,6 +21,11 @@ object TrustRegistryDTO {
     given JsonValueCodec[TrustRegistryDTO] = JsonCodecMaker.make
 }
 
+case class CardanoTrustRegistryParams(
+                                      templateName: String,
+                                      parameters: Seq[String],
+                                     )
+                                     
 
 case class CreateTrustRegistryDTO(
                                    name: String,
@@ -33,7 +38,8 @@ case class CreateTrustRegistryDTO(
                                    createSubmitCost: Option[Int] = None,
                                    changeTargetAddress: Option[String] = None,
                                    changeSubmitCost: Option[Int] = None,
-                                   mintingPolicy: Option[String] = None,
+                                   targetMintingPolicy: Option[String] = None,
+                                   changeSubmitMintingPolicy: Option[String] = None,
                                  )
 
 object CreateTrustRegistryDTO {

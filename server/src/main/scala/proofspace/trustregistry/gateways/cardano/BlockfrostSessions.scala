@@ -8,6 +8,15 @@ import proofspace.trustregistry.AppConfig
 
 class BlockfrostSessions(using AppContextProvider[AppConfig]) {
 
+  
+  def createBFService(serviceDid: String, cardanoSubnetwork: String, proofspaceNetwork: String): BFBackendService = {
+    val (baseUrl, apiKey) = AppContext[AppConfig].cardano.subnetworks.get(cardanoSubnetwork) match
+      case Some(subnetworkConfig) =>
+        (subnetworkConfig.blockfrostUrl, subnetworkConfig.blockfrostApiKey)
+      case None => throw IllegalArgumentException(s"Cardano subnetwork $cardanoSubnetwork not found in config")
+    new BFBackendService(baseUrl, apiKey)
+  }
+  
   def createTransactionService(serviceDid: String, cardanoSubnetwork: String, proofspaceNetwork: String): TransactionService = {
      val (baseUrl, apiKey) = AppContext[AppConfig].cardano.subnetworks.get(cardanoSubnetwork) match
        case Some(subnetworkConfig) =>

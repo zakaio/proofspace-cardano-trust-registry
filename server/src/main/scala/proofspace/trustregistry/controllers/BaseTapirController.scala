@@ -1,6 +1,7 @@
 package proofspace.trustregistry.controllers
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
+import org.slf4j.LoggerFactory
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.generic.auto.*
