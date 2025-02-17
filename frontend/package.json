@@ -34,7 +34,7 @@
   "scripts": {
     "update-locales": "node ./bin/updateLocale.mjs",
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "npm run update-locales && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
