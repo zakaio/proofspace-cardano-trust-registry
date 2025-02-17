@@ -1,13 +1,13 @@
-/*import EN from '../../locales/en.json';
+import EN from '../../locales/en.json';
 import AR from '../../locales/ar.json';
 import DE from '../../locales/de.json';
-import UA from '../../locales/ua.json';*/
+import UA from '../../locales/ua.json';
 
 
-const EN = {};
+/*const EN = {};
 const AR = {};
 const DE = {};
-const UA = {};
+const UA = {};*/
 
 export interface Locale {
   [key: string]: string;
