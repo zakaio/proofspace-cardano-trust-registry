@@ -15,24 +15,16 @@ case class ContractParameter(name: String, description: String, tp: ContractPara
 
 trait ContractGenerator {
 
+
   def parametersDescription: Seq[ContractParameter]
 
   /**
    * Addresses, that will be used for trust registry. Transactions to this address
-   * will be used to update trust registry.
+   * will be used to update trust registry.  
    * @param name
    * @return
    */
-  def generateTargetAddress(name: String, params: Seq[String]): Address
-
-  /**
-   * Addresses, that will be used for voting for changes.
-   * Changes, which will need to be accepted or rejected sends to this address.
-   * @param pkh
-   * @param name
-   * @return
-   */
-  def generateVotingAddress(name: String, params: Seq[String]): Address
+  def generateTargetAddressScript(name: String, params: Seq[String]): scalus.uplc.Term
 
   /**
    * Minting policy for transactions, from wich we restore the trust registry.
@@ -54,11 +46,13 @@ trait ContractGenerator {
    * @param contractParameters
    * @return
    */
-  def generateVotingMintingPolicy(name: String,
+  def generateSubmitMintingPolicy(name: String,
                             contractParameters: Seq[String],
                            ): scalus.uplc.Term
 
 
+  def minChangeCost(contractParameters: Seq[String]): BigInt
+  
   protected def cardanoOfflineAccess: CardanoOfflineAccess
 
   protected def getPkh(params:Seq[String], idx:Int): PubKeyHash = {

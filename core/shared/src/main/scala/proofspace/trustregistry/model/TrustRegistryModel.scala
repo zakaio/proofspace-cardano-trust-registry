@@ -98,7 +98,7 @@ enum TrustRegistryOperation  {
 
   case AddDids(dids: scalus.prelude.List[ByteString])
   case RemoveDids(dids: scalus.prelude.List[ByteString])
-  case ChangeName(name: ByteString)
+  case SetName(name: ByteString)
 
 }
 
@@ -113,7 +113,7 @@ object TrustRegistryOperation {
       case TrustRegistryOperation.RemoveDids(did) =>
         val dd = PreludeListData.listToData(did)
         Builtins.constrData(1, scalus.builtin.List(dd) )
-      case TrustRegistryOperation.ChangeName(name) =>
+      case TrustRegistryOperation.SetName(name) =>
         val dn: Data = Data.B(name)
         Builtins.constrData(2, scalus.builtin.List(dn))
   }
@@ -134,6 +134,7 @@ object TrustRegistryOperation {
 enum TrustRegistryDatum {
   case Operations(ops: scalus.prelude.List[TrustRegistryOperation])
   case SeeReferenceIndex(index: BigInt)
+  case SeeNormalInput(index: BigInt)
 }
 
 @scalus.Compile
@@ -147,6 +148,10 @@ object TrustRegistryDatum {
       case TrustRegistryDatum.SeeReferenceIndex(index) =>
         val idxData: Data = Data.I(index)
         Builtins.constrData(1, scalus.builtin.List(idxData))
+      case TrustRegistryDatum.SeeNormalInput(index) =>
+        val idxData: Data = Data.I(index)
+        Builtins.constrData(2, scalus.builtin.List(idxData))
+
   }
 
   given FromData[TrustRegistryDatum] = FromData.deriveCaseClass[TrustRegistryDatum]

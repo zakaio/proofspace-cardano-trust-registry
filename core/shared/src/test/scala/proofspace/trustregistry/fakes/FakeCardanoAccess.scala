@@ -12,6 +12,7 @@ import cps.*
 import cps.monads.{*, given}
 import cps.stream.*
 import proofspace.trustregistry.offchain.*
+import scalus.builtin.ByteString
 
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -63,5 +64,12 @@ class FakeCardanoAccess extends CardanoOfflineAccess {
 
   }
 
+  override def translateAddressToByteString(address: Address): ByteString = ???
+
+  override def translateAddressToBeth32(address: Address): String = ???
+  
+  override def translateBeth32ToAddress(bech32: String): Address = ???
+  
+  override def translateUplcToAddress(uplc: scalus.uplc.Term): Address = ???
 
 }

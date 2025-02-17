@@ -29,7 +29,10 @@ object SindleMaintainer  {
     !(scalus.prelude.List.isEmpty(operations))
   }
 
-  
+  def targetAddressScript(pkhBytes: ByteString)(ctx: ScriptContext): Unit = {
+    val pkh = new PubKeyHash(pkhBytes)
+    val unused = scalus.prelude.List.findOrFail(ctx.txInfo.signatories)(_ === pkh)
+  }
   
   /**
    * Check minting policy for the single-maintainer trust registry.

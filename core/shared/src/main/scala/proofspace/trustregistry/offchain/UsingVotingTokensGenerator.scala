@@ -1,8 +1,10 @@
 package proofspace.trustregistry.offchain
 
-import proofspace.trustregistry.onchain.UsingVotingTokens
+import proofspace.trustregistry.onchain.{SindleMaintainer, SubmitWithCostMaintainerApprove, UsingVotingTokens}
 import scalus.builtin.ByteString
-import scalus.ledger.api.v1.Credential
+import scalus.ledger.api.v3.Credential
+import scalus.ledger.api.v1.Credential.PubKeyCredential
+import scalus.ledger.api.v1.Credential.ScriptCredential
 import scalus.ledger.api.v3.{Address, PubKeyHash}
 import scalus.prelude.Maybe
 import scalus.uplc.Term
@@ -16,20 +18,20 @@ class UsingVotingTokensGenerator(override val cardanoOfflineAccess: CardanoOffli
     ContractParameter("votingTokenAsset", "Asset of voting tokens", ContractParameterType.String),
     ContractParameter("costVotingToken", "Minimal number of voting token", ContractParameterType.Integer),
     ContractParameter("costAda", "Minimal number of ADA", ContractParameterType.Integer),
-    ContractParameter("targetAddress", "Address of the trust registry", ContractParameterType.Address),
-    ContractParameter("submitAddress", "Address for submitting changes", ContractParameterType.Address),
-    ContractParameter("submitMintingPolicy", "Minting policy for submitting changes", ContractParameterType.String),
+    ContractParameter("targetPkh", "pubkeyhash of target address", ContractParameterType.Address),
   )
 
   val VOTING_TOKENS_IDX = 0
   val VOTING_TOKEN_ASSET_IDX = 1
   val COST_VOTING_TOKEN_IDX = 2
   val COST_ADA_IDX = 3
-  val TARGET_ADDRESS_IDX = 4
-  val VOTING_ADDRESS_IDX = 5
+  val PKH_IDX = 4
 
-  override def generateTargetAddress(name: String, params: Seq[String]): Address = {
-    cardanoOfflineAccess.translateBeth32ToAddress(params(TARGET_ADDRESS_IDX))
+  override def generateTargetAddressScript(name: String, params: Seq[String]): Term = {
+    val pkhBytes = scalus.builtin.ByteString.fromHex(params(PKH_IDX))
+    val contractScriptPar = scalus.Compiler.compile(SindleMaintainer.targetAddressScript(_)).toUplc(true)
+    val contractScript = contractScriptPar $ pkhBytes
+    contractScript
   }
 
   override def generateTargetMintingPolicy(name: String, contractParameters: Seq[String]): Term = {
@@ -38,7 +40,7 @@ class UsingVotingTokensGenerator(override val cardanoOfflineAccess: CardanoOffli
     val votingTokenAsset = ByteString.fromString(contractParameters(VOTING_TOKEN_ASSET_IDX))
     val changeCostVotingToken = BigInt(contractParameters(COST_VOTING_TOKEN_IDX))
     val changeCostAda = BigInt(contractParameters(COST_ADA_IDX))
-    val targetAddress = cardanoOfflineAccess.translateBeth32ToAddress(contractParameters(TARGET_ADDRESS_IDX))
+    val targetAddress = cardanoOfflineAccess.translateUplcToAddress(generateTargetAddressScript(name, contractParameters))
     val targetCredential = targetAddress.credential
     val (targetCredBytes, targetIsScript) = targetCredential match {
       case Credential.PubKeyCredential(pubKeyHash) => (pubKeyHash.hash, false)
@@ -65,13 +67,26 @@ class UsingVotingTokensGenerator(override val cardanoOfflineAccess: CardanoOffli
     fun
   }
 
-  override def generateVotingAddress(name: String, params: Seq[String]): Address = {
-    cardanoOfflineAccess.translateBeth32ToAddress(params(VOTING_ADDRESS_IDX))
+
+  // the same as maintainer,  anybody can submit a change.
+  override def generateSubmitMintingPolicy(name: String, contractParameters: Seq[String]): Term = {
+    val regName = scalus.builtin.ByteString.fromString(name)
+    val cost = BigInt(getInteger(contractParameters, COST_ADA_IDX))
+    val address: Address = cardanoOfflineAccess.translateUplcToAddress(generateTargetAddressScript(name, contractParameters))
+    val addressCred = address.credential
+    val (addressBytes, isScript) = addressCred match
+      case PubKeyCredential(pkh) => (pkh.hash, false)
+      case ScriptCredential(skh) => (skh, true)
+    val uplcPar = scalus.Compiler.compile(
+      (regName: ByteString, cost: BigInt, credBytes: ByteString, isScript: Boolean) =>
+        val cred = if isScript then new  ScriptCredential(credBytes) else new PubKeyCredential( new PubKeyHash(credBytes))
+        SubmitWithCostMaintainerApprove.submittForApproveMintingPolicy(regName,cost, new Address(cred,Maybe.Nothing))
+    ).toUplc(true)
+    val uplc = uplcPar $ regName $ cost $ addressBytes $ isScript
+    uplc
   }
 
-  override def generateVotingMintingPolicy(name: String, contractParameters: Seq[String]): Term = {
-
-  }
-
+  override def minChangeCost(contractParameters: Seq[String]): BigInt =
+    BigInt(getInteger(contractParameters, COST_ADA_IDX))
 
 }

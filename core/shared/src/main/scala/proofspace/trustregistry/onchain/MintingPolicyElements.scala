@@ -58,6 +58,12 @@ object MintingPolicyElements {
                     summon[FromData[TrustRegistryDatum]](refDatum) match
                       case TrustRegistryDatum.Operations(ops) => ops
                       case _ => throw new Exception("Invalid datum in the reference input")
+                  case TrustRegistryDatum.SeeNormalInput(idx) =>
+                    val normalInput = scalus.prelude.List.getByIndex(txInfo.inputs)(idx)
+                    val normalDatum = retrieveDatum(normalInput.resolved, txInfo)
+                    summon[FromData[TrustRegistryDatum]](normalDatum) match
+                      case TrustRegistryDatum.Operations(ops) => ops
+                      case _ => throw new Exception("Invalid datum in the normal input")
                 if (scalus.prelude.List.isEmpty(ops))
                   throw new Exception("No operations in the output")
                 else

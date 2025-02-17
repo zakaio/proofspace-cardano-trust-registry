@@ -57,7 +57,7 @@ case class InMemoryTrustRegistrySnapshot(pkh: PubKeyHash,
             s.removed(did)
           }
           (name, newMap)
-        case TrustRegistryOperation.ChangeName(name) =>
+        case TrustRegistryOperation.SetName(name) =>
           (name, acc._2)
       }
     }
