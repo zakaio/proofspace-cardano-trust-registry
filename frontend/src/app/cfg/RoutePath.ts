@@ -8,3 +8,8 @@ export enum MainPath {
   REGISTRY = 'registry',
   DENIED = 'denied'
 }
+
+export enum RegistryPath {
+  ENTRIES = 'entries',
+  CHANGES = 'changes'
+}

@@ -1,11 +1,11 @@
 import {FC, useEffect, useState} from "react";
-import PopUp from "../PopUp";
-import {localize} from "../../app/cfg/Language";
-import Panel from "../Panel";
-import {calculatePopUpSizes} from "../../utils/domUtil";
+import PopUp from "../../PopUp";
+import {localize} from "../../../app/cfg/Language";
+import Panel from "../../Panel";
+import {calculatePopUpSizes} from "../../../utils/domUtil";
 import {Button, TextField} from "@mui/material";
-import {useDidMount} from "../../app/hooks";
-import AlignedHGroup from "../AlignedHGroup";
+import {useDidMount} from "../../../app/hooks";
+import AlignedHGroup from "../../AlignedHGroup";
 
 interface Props {
   open: boolean;
