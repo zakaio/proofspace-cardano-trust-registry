@@ -29,6 +29,7 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend],
     submitChangeEndpoint,
     approveChangeEndpoint,
     rejectChangeEndpoint,
+    queryChangesEndpoint,
     queryEntriesEndpoint,
     checkDidEndpoint,
     networkChoiceEndpoing
@@ -171,6 +172,36 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend],
          verifySignature(optBearer, optSignature, optServiceDid, optNetwork)
       }.serverLogic { (serviceDid, network) => query =>
           handleQueryEntries(query, serviceDid, network)
+      }
+
+    val queryChangesEndpoint = endpoint.get
+      .in("trust-registry" / path[String]("registryId") / "changes")
+      .securityIn(auth.bearer[Option[String]]())
+      .securityIn(header[Option[String]]("X-Body-Signature"))
+      .securityIn(query[Option[String]]("serviceDid").description("Service DID"))
+      .securityIn(query[Option[String]]("network").description("proofspace network"))
+      .in(
+        query[Option[String]]("changeId").and(
+             query[Option[Int]]("limit")
+          ).and(
+             query[Option[Int]]("offset")
+          )
+      ).mapIn(
+        (registryId, changeId, limit, offset) =>
+           TrustRegistryChangeQueryDTO(Some(registryId),changeId,limit,offset))
+        (x => (x.registryId.get, x.changeId, x.limit,x.offset))
+      .errorOut(jsonBody[HttpExceptionDTO])
+      .errorOut(statusCode)
+      .mapErrorOut(Mapping.from[(HttpExceptionDTO,StatusCode),HttpExceptionDTO](_._1)(ex => (ex,StatusCode(ex.statusCode))))
+      .description("Query trust registry changes")
+      .out(jsonBody[TrustRegistryChangesDTO])
+      .serverSecurityLogic { case (optBearer, optSignature, optServiceDid, optNetwork) =>
+         verifySignature(optBearer, optSignature, optServiceDid, optNetwork)
+      }.serverLogic { (serviceDid, network) => query0 =>
+          val query = query0.copy(serviceDid = Some(serviceDid), proofspaceNetwork = Some(network))
+          AppContext[TrustRegistryBackend].queryChanges(query).map(Right(_)).recover {
+            case ex:HttpException => Left(ex.toDTO)
+          }
       }
 
     val checkDidEndpoint = endpoint.get

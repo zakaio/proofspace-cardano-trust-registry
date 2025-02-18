@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 import play.api.libs.json.Json
 import proofspace.trustregistry.AppConfig
 import proofspace.trustregistry.dto.*
-import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.Add
+import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.{Add, Remove, toInt}
 import proofspace.trustregistry.gateways.*
 import proofspace.trustregistry.services.{BlockchainAdapterService, MongoDBService}
 import reactivemongo.api.DB
@@ -42,6 +42,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     val entry = TrustRegistryEntry(registryId, create.name,
       create.network, create.subnetwork,
       serviceDid, proofspaceNetwork,
+      create.schema,
       create.createTargetAddress,
       Seq.empty)
     val collection = await(retrieveCollection)
@@ -52,7 +53,11 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     }
     // TODO: receive through the blockchain adapter.
     val now = LocalDateTime.now()
-    TrustRegistryDTO(registryId, create.name, create.network, serviceDid, proofspaceNetwork, create.subnetwork, create.createTargetAddress, now)
+    TrustRegistryDTO(registryId, create.name, create.network, serviceDid, proofspaceNetwork, create.subnetwork,
+      create.createTargetAddress,
+      now,
+      create.schema
+    )
   }
 
   override def listRegistries(query: TrustRegistryQueryDTO, serviceDid: String, proofspaceNetwork: String): Future[TrustRegistriesDTO] = async[Future] {
@@ -66,7 +71,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     val offset = query.offset.getOrElse(0)
     val registries = collection.find(mongoQuery).skip(offset).cursor[TrustRegistryHeader]().collect[List](limit).await
     TrustRegistriesDTO(registries.map{ header =>
-      TrustRegistryDTO(header.registryId, header.name, header.network, serviceDid, proofspaceNetwork, header.subnetwork, header.targetAddress, LocalDateTime.now())
+      TrustRegistryDTO(header.registryId, header.name, header.network, serviceDid, proofspaceNetwork, header.subnetwork, header.targetAddress,  LocalDateTime.now(), header.schema)
     }, registries.size)
   }
 
@@ -350,6 +355,70 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     TrustRegistryDidEntriesDTO(entries, total)
   }
 
+  override def queryChanges(query: TrustRegistryChangeQueryDTO): Future[TrustRegistryChangesDTO] = async[Future]{
+    val collection = await(retrieveCollection)
+    val matchQuery0 = query.registryId match
+      case Some(registryId) => BSONDocument("registryId" -> registryId)
+      case None => BSONDocument()
+    val matchQuery1 = query.changeId match
+      case Some(changeId) => matchQuery0 ++ BSONDocument("changes.changeId" -> changeId)
+      case None => matchQuery0
+    val matchQuery = matchQuery1
+    val limit = query.limit.getOrElse(1000)
+    val offset = query.offset.getOrElse(0)
+
+    val changes = collection.aggregateWith[TrustRegistryChangeDTO](){ framework =>
+      import framework.{*,given}
+      List(
+        Match(matchQuery),
+        UnwindField("changes"),
+        Sort(Descending("changes.lastDate")),
+        Project(BSONDocument(
+          "registryId" -> 1,
+          "changeId" -> "$changes.changeId",
+          "didChanges" -> "$changes.didChanges",
+          "addedDids" -> BSONDocument(
+            "$map" -> BSONDocument(
+              "input" -> BSONDocument(
+                "$filter" -> BSONDocument(
+                  "input" -> "$changes.didChanges",
+                  "cond" -> BSONDocument("$eq" -> BSONArray("$$this.proposal", TrustRegistryProposalStatusDTO.toInt(Add)))
+                )
+              ),
+              "in" -> "$$this.did"
+            )
+          ),
+          "removedDids" ->  BSONDocument(
+            "$map" -> BSONDocument(
+              "input" -> BSONDocument(
+                "$filter" -> BSONDocument(
+                  "input" -> "$changes.didChanges",
+                  "cond" -> BSONDocument("$eq" -> BSONArray("$$this.proposal", TrustRegistryProposalStatusDTO.toInt(Remove)))
+                )
+              ),
+              "in" -> "$$this.did"
+            )
+          ),
+          "approved" -> "$changes.accepted",
+          "changeDate" -> "$changes.lastDate",
+          "transactionId" -> "$changes.transactionId"
+        )),
+        Skip(offset),
+        Limit(limit)
+      )
+    }.collect[Seq]().await
+
+    val changesItemsTotal = collection.aggregateWith[CountResult](){ framework =>
+      import framework.{*,given}
+      List(
+        Match(matchQuery),
+        UnwindField("changes"),
+        Count("count")
+      )
+    }.headOption.await.map(_.count).getOrElse(0)
+    TrustRegistryChangesDTO(changes, changesItemsTotal)
+  }
+
   override def queryDid(registryId: String, did: String): Future[Option[TrustRegistryDidEntryDTO]] = {
     val query = TrustRegistryEntryQueryDTO(registryId, did = Some(did))
     queryEntries(query).map{ entries =>
@@ -393,6 +462,7 @@ object MongoDBTrustRegistryBackend {
              network: String,
              subnetwork: Option[String],
              targetAddress: Option[String],
+             schema: Option[String]
                                 )
 
   object TrustRegistryHeader {
@@ -403,6 +473,7 @@ object MongoDBTrustRegistryBackend {
       "network" -> BSONString("network"),
       "subnetwork" -> BSONString("subnetwork"),
       "targetAddress" -> BSONString("targetAddress"),
+      "schema" -> BSONString("schema")
     )
   }
 
@@ -415,6 +486,7 @@ object MongoDBTrustRegistryBackend {
                                subnetwork: Option[String],
                                serviceDid: String,
                                proofspaceNetwork: String,
+                               schema: Option[String],
                                targetAddress: Option[String],
                                changes: Seq[TrustRegistryChangeEntry],
                                )
@@ -427,6 +499,7 @@ object MongoDBTrustRegistryBackend {
                                      didChanges: Seq[TrustRegistryDidEntryInChange],
                                      accepted: Boolean,
                                      lastDate: LocalDateTime,
+                                     transactionId: Option[String] = None,
                                      )
 
   given BSONHandler[TrustRegistryChangeEntry] = Macros.handler[TrustRegistryChangeEntry]

@@ -113,9 +113,9 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
 
   test("create add itens to local trust registry") {
     val f = async[Future] {
-       val appConfig = await(serverFixture())
-       val sttpBackend = sttpBackendFixture()
-       val createTrustRegistryRequest = sttp.client3.basicRequest
+      val appConfig = await(serverFixture())
+      val sttpBackend = sttpBackendFixture()
+      val createTrustRegistryRequest = sttp.client3.basicRequest
          .post(uri"http://localhost:${appConfig.port}/trust-registry")
          .body(
             CreateTrustRegistryDTO(
@@ -177,11 +177,11 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
         .response(asJson[Boolean])
 
       val approveChangeResponse = await(sttpBackend.send(approveChangeRequest))
-      println(s"approveChangeResponse=${approveChangeResponse}")
+      //println(s"approveChangeResponse=${approveChangeResponse}")
       assert(approveChangeResponse.code.isSuccess)
 
       val queryResponse2 = await(sttpBackend.send(queryRequest))
-      println(s"queryResponse2=${queryResponse2}")
+      //println(s"queryResponse2=${queryResponse2}")
 
       val entries2 = queryResponse2.body match
         case Right(entries) => entries
@@ -285,6 +285,69 @@ class TestCreateAndEditLocalTrustRegistry extends munit.FunSuite with TestContai
       val queryResponse3 = await(sttpBackend.send(queryRequest3))
       println(s"queryResponse3=${queryResponse3}")  
       
+
+    }
+    f
+  }
+
+  test("query changes") {
+    val f = async[Future] {
+      val appConfig = await(serverFixture())
+      val sttpBackend = sttpBackendFixture()
+      val createTrustRegistryRequest = sttp.client3.basicRequest
+        .post(uri"http://localhost:${appConfig.port}/trust-registry")
+        .body(
+          CreateTrustRegistryDTO(
+            name = "test",
+            network = "local",
+          )
+        )
+      val response = await(sttpBackend.send(createTrustRegistryRequest))
+      println(s"response=${response}")
+      assert(response.code.isSuccess)
+
+      // now generate 10 DIDs and add them to the registry
+      val dids = (1 to 10).map { i => s"did:example:${200 + i}" }
+      val changeRequest = sttp.client3.basicRequest.post(
+          uri"http://localhost:${appConfig.port}/trust-registry/test/change")
+        .body(
+          TrustRegistryChangeDTO(
+            registryId = "local:test",
+            changeId = None,
+            addedDids = dids,
+            removedDids = Seq.empty
+          )
+        ).response(asJson[TrustRegistryChangeDTO])
+      val changeResponse = await(sttpBackend.send(changeRequest))
+      println(s"changeResponse=${changeResponse}")
+      assert(changeResponse.code.isSuccess)
+      val changeId = changeResponse.body match
+        case Right(change) => change.changeId.getOrElse(
+          throw new RuntimeException("Failed to get changeId from response")
+        )
+        case Left(error) => throw new Exception(s"Failed to parse response to change request: ${error}")
+
+      val registryId = "local:test"
+      //now query the changes
+      val changeQuery = TrustRegistryChangeQueryDTO(
+        registryId = Some(registryId),
+        limit = Some(1000)
+      )
+      val queryRequest = sttp.client3.basicRequest.get(
+        uri"http://localhost:${appConfig.port}/trust-registry/${changeQuery.registryId.get}/changes?registryId=${changeQuery.registryId.get}&limit=${changeQuery.limit}"
+      ).response(asJson[TrustRegistryChangesDTO])
+
+      val queryResponse = await(sttpBackend.send(queryRequest))
+      println(s"changes queryResponse=${queryResponse}")
+      assert(queryResponse.code.isSuccess)
+
+      val changes = queryResponse.body match
+        case Right(changes) => changes
+        case Left(error) => throw new Exception(s"Failed to parse query response: ${error}")
+
+
+      assert(changes.items.size > 0)
+      assert(changes.itemsTotal > 0)
 
     }
     f

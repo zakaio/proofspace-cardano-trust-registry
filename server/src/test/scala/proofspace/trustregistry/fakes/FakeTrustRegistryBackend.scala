@@ -5,14 +5,14 @@ import org.slf4j.LoggerFactory
 import proofspace.trustregistry.AppConfig
 import proofspace.trustregistry.dto.TrustRegistryEntryStatusDTO.Active
 import proofspace.trustregistry.dto.TrustRegistryProposalStatusDTO.Add
-import proofspace.trustregistry.dto.{CreateTrustRegistryDTO, TrustRegistriesDTO, TrustRegistryChangeDTO, TrustRegistryDTO, TrustRegistryDidChangeDTO, TrustRegistryDidEntriesDTO, TrustRegistryDidEntryDTO, TrustRegistryEntryQueryDTO, TrustRegistryQueryDTO}
-
+import proofspace.trustregistry.dto.*
 import scala.collection.mutable.Queue
 import scala.collection.mutable.Map as MutableMap
 import scala.collection.concurrent.TrieMap
 import proofspace.trustregistry.gateways.TrustRegistryBackend
 
 import java.time.{LocalDateTime, ZoneOffset}
+import java.util.UUID
 import scala.concurrent.Future
 
 
@@ -31,7 +31,7 @@ class FakeTrustRegistryBackend(using AppContextProvider[AppConfig]) extends Trus
           None
         } else {
           val now = LocalDateTime.now()
-          Some(TrustRegistryDTO(name, name, "fake", serviceDid, proofspaceNetwork, None, None, now))
+          Some(TrustRegistryDTO(name, name, "fake", serviceDid, proofspaceNetwork, None, None, now, None))
         }
     }
     Future.successful(TrustRegistriesDTO(retval.toSeq, retval.size))
@@ -47,7 +47,7 @@ class FakeTrustRegistryBackend(using AppContextProvider[AppConfig]) extends Trus
         val registry = new FakeTrustRegistryBackend.InMemoryTrustRegistry
         registries.put(name, registry)
         val now = LocalDateTime.now()
-        Future.successful(TrustRegistryDTO(create.name, create.name, create.network, serviceDid, proofspaceNetwork, None, None, now))
+        Future.successful(TrustRegistryDTO(create.name, create.name, create.network, serviceDid, proofspaceNetwork, None, None, now, None))
   }
   
   override def removeRegistry(registryId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean] = {
@@ -105,6 +105,17 @@ class FakeTrustRegistryBackend(using AppContextProvider[AppConfig]) extends Trus
   override def approveChange(registryId: String, changeId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean] = {
     Future successful(true)
   }
+
+  override def queryChanges(query: TrustRegistryChangeQueryDTO): Future[TrustRegistryChangesDTO] = {
+    registries.get(query.registryId.get) match {
+      case Some(registry) =>
+        val changes = registry.queryChanges(query)
+        val items = changes
+        Future.successful(TrustRegistryChangesDTO(items, changes.size))
+      case None =>
+        throw new Exception(s"Registry with id ${query.registryId} not found")
+    }
+  }
   
 }
 
@@ -125,8 +136,11 @@ object FakeTrustRegistryBackend {
   class InMemoryTrustRegistry {
     val entries: TrieMap[String, Entry] = TrieMap.empty
     // TODO: model voting for entries
+    val changes: TrieMap[String, TrustRegistryChangeDTO] = TrieMap.empty
 
     def applyEntry(change: TrustRegistryChangeDTO): Future[Unit] = {
+      val nChangeId = change.changeId.getOrElse(UUID.randomUUID().toString)
+      changes.put(nChangeId, change)
       for(did <- change.addedDids) {
         entries.get(did) match
           case Some(entry) =>
@@ -180,6 +194,15 @@ object FakeTrustRegistryBackend {
       val limit = query.limit.getOrElse(100)
       val withLimit = withOffset.take(limit)
       (withLimit, total)
+    }
+
+    def queryChanges(query: TrustRegistryChangeQueryDTO): Seq[TrustRegistryChangeDTO] = {
+      val fun = (change: TrustRegistryChangeDTO) => {
+        query.changeId match
+          case Some(changeId) => change.changeId.contains(changeId)
+          case None => true
+      }
+      changes.values.filter(fun).toSeq
     }
 
   }

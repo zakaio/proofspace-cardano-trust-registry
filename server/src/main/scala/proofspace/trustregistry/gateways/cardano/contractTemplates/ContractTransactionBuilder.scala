@@ -5,7 +5,7 @@ import proofspace.trustregistry.dto.CardanoContractDTO
 
 trait ContractTransactionBuilder {
 
-  def buildCreateTransaction(name: String, contract: CardanoContractDTO): Future[String]
+  def buildCreateTransaction(name: String, snetwork: String, contract: CardanoContractDTO): Future[String]
 
   def buildSubmitChangeTransaction(name: String, contract: CardanoContractDTO): Future[String]
 

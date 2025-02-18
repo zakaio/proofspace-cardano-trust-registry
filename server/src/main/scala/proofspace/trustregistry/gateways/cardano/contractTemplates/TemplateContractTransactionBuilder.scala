@@ -16,6 +16,7 @@ import com.bloxbean.cardano.client.transaction.spec.{Value as BloxbeanValue, *}
 import com.bloxbean.cardano.client.backend.api.*
 import com.bloxbean.cardano.client.backend.blockfrost.*
 import com.bloxbean.cardano.client.backend.blockfrost.service.BFBackendService
+import com.bloxbean.cardano.client.common.model.Networks
 import com.bloxbean.cardano.client.function.{TxBuilder, TxBuilderContext}
 import com.bloxbean.cardano.client.plutus.spec.PlutusV3Script
 import com.bloxbean.cardano.client.quicktx.{QuickTxBuilder, Tx}
@@ -25,12 +26,18 @@ import scalus.bloxbean.Interop
 class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService: BFBackendService, senderAddress: String) extends ContractTransactionBuilder {
 
 
-    def buildCreateTransaction(name: String, contract: CardanoContractDTO): Future[String] = async[Future]{
+    def buildCreateTransaction(name: String, snetwork: String, contract: CardanoContractDTO): Future[String] = async[Future]{
       val targetScalusScript = generator.generateTargetAddressScript(name, contract.parameters)
       val targetCborHex = targetScalusScript.plutusV3.doubleCborHex
       val targetPlutusScript = PlutusV3Script.builder().cborHex(targetCborHex).build()
-      /*
-      val targetScriptHash = targetPlutusScript.scriptHash
+      val network = snetwork match
+        case "mainnet" => Networks.mainnet()
+        case "testnet" => Networks.testnet()
+        case "preprod" => Networks.preprod()
+        case "preview" => Networks.preview()
+        case _ => throw IllegalArgumentException(s"Invalid network $snetwork")
+
+      val targetAddress = AddressProvider.getEntAddress(targetPlutusScript, network)
 
       val submitMintingPolicy = generator.generateSubmitMintingPolicy(name, contract.parameters).plutusV3
       val mintingPolicyScript = new MintingPolicyScript(submitMintingPolicy)
@@ -51,8 +58,9 @@ class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService
       
       //val targetAddressBench32 = AddressProvider.getEntAddress()
 
+      /*
       val transactionOutput = TransactionOutput.builder()
-        .address(Interop.toAddress(targetAddress))
+        .address(targetAddress.toBech32)
         .value(Value.builder().coin(BigInteger.ZERO).build())
         .build();
 

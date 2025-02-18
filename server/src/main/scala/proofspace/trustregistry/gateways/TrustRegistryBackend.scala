@@ -22,6 +22,8 @@ trait TrustRegistryBackend {
   
   def approveChange(registryId: String, changeId: String, serviceDid: String, proofspaceNetwork: String): Future[Boolean]
   
+  def queryChanges(query: TrustRegistryChangeQueryDTO): Future[TrustRegistryChangesDTO]
+  
   def queryEntries(query: TrustRegistryEntryQueryDTO): Future[TrustRegistryDidEntriesDTO]
   
   def queryDid(registryId: String, did: String): Future[Option[TrustRegistryDidEntryDTO]]

@@ -14,6 +14,7 @@ case class TrustRegistryDTO(
                              subnetwork: Option[String],
                              didPrefix: Option[String],
                              lastChangeDate: LocalDateTime,
+                             schema: Option[String],
                            )
 
 object TrustRegistryDTO {
@@ -34,6 +35,7 @@ case class CreateTrustRegistryDTO(
                                    proofspaceServiceDid: Option[String] = None,
                                    proofspaceNetwork: Option[String] = None,
                                    didPrefix: Option[String] = None,
+                                   schema: Option[String] = None,
                                    createTargetAddress: Option[String] = None,
                                    createSubmitCost: Option[Int] = None,
                                    changeTargetAddress: Option[String] = None,
