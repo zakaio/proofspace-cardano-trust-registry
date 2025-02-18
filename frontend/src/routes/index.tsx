@@ -12,7 +12,7 @@ import {paramsStorage} from "../domain/ParamStorage";
 const Auth = Loadable(lazy(() => import("../components/Auth")));
 
 const RegistryList = Loadable(lazy(() => import('../components/RegistryList')));
-const EntriesList = Loadable(lazy(() => import('../components/EntriesList')));
+const EntriesLayout = Loadable(lazy(() => import('../components/EntriesLayout')));
 const Denied = Loadable(lazy(() => import('../components/Dinied')));
 
 export const createRoutes = (root: string, user?: User) => {
@@ -74,7 +74,11 @@ export const createRoutes = (root: string, user?: User) => {
             },
             {
               path: `${MainPath.REGISTRY}/:id`,
-              element: <EntriesList />,
+              element: <Outlet />,
+              children: [
+                {path: ':section', element: (<EntriesLayout/>)},
+                {path: '', element: (<EntriesLayout/>)}
+              ]
             },
           ]
         },

@@ -13,7 +13,7 @@ export interface ErrorHandleOptions {
   parser?: (err: any) => {error: string; stackTrace?: string};
 }
 
-const defCfg= (): AxiosRequestConfig => ({withCredentials: true});
+const defCfg= (): AxiosRequestConfig => ({/*withCredentials: true*/});
 
 export const token = () => {
   const tkn = localStorage.getItem(TOKEN_NAME);

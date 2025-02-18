@@ -1,13 +1,13 @@
 import {createAsyncThunk, createSlice, PayloadAction} from "@reduxjs/toolkit";
 import {ItemsState} from "./base";
-import {Entry} from "../../domain/Entry";
-import {entriesApi} from "../api/API";
+import {proposedChangesApi} from "../api/API";
+import {ProposedChange} from "../../domain/ProposedChange";
 
 let itemsPerPage = 9;
 let currentPage = 1;
 let filter = '';
 
-const initialState: ItemsState<Entry> = {
+const initialState: ItemsState<ProposedChange> = {
   items: [],
   itemsTotal: 0,
   currentPage: 1,
@@ -15,14 +15,14 @@ const initialState: ItemsState<Entry> = {
   filter: ''
 };
 
-export const entrySlice = createSlice({
-  name: 'entry',
+export const changesSlice = createSlice({
+  name: 'change',
   initialState,
   reducers: {
     setLoading: (state) => {
       state.isLoading = true;
     },
-    setEntries: (state, action: PayloadAction<ItemsState<Entry>>) => {
+    setChanges: (state, action: PayloadAction<ItemsState<ProposedChange>>) => {
       state.items = action.payload.items;
       state.itemsTotal = action.payload.itemsTotal;
       state.itemsPerPage = action.payload.itemsPerPage;
@@ -33,10 +33,10 @@ export const entrySlice = createSlice({
   }
 });
 
-const {setLoading, setEntries} = entrySlice.actions;
+const {setLoading, setChanges} = changesSlice.actions;
 
-export const getEntries = createAsyncThunk(
-  'get-entries',
+export const getChanges = createAsyncThunk(
+  'get-changes',
   async (arg: {registryId: string, currentPage: number, itemsPerPage: number, filter: string}, {dispatch}) => {
     dispatch(setLoading());
     currentPage = arg.currentPage;
@@ -47,20 +47,20 @@ export const getEntries = createAsyncThunk(
       offset = 0;
     }
 
-    const entries = await entriesApi.list(
+    const entries = await proposedChangesApi.list(
       {parent: arg.registryId, range: {limit: itemsPerPage, offset}, commonFilter: filter}
     );
 
-    dispatch(setEntries({ ...entries, currentPage, itemsPerPage, filter}));
+    dispatch(setChanges({ ...entries, currentPage, itemsPerPage, filter}));
   }
 );
 
-/*export const proposeChanges = createAsyncThunk(
+export const proposeChanges = createAsyncThunk(
   'propose-changes',
   async (arg: {registryId: string, added: string[], removed: string[]}, {dispatch}) => {
     dispatch(setLoading());
-    await entriesApi.proposeChanges(arg.registryId, arg.added, arg.removed);
-    dispatch(getEntries({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
+    await proposedChangesApi.proposeChanges(arg.registryId, arg.added, arg.removed);
+    dispatch(getChanges({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
   }
 );
 
@@ -68,8 +68,8 @@ export const approveChanges = createAsyncThunk(
   'approve-changes',
   async (arg: {registryId: string, changeId: string}, {dispatch}) => {
     dispatch(setLoading());
-    await entriesApi.approveChanges(arg.registryId, arg.changeId);
-    dispatch(getEntries({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
+    await proposedChangesApi.approveChanges(arg.registryId, arg.changeId);
+    dispatch(getChanges({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
   }
 );
 
@@ -77,7 +77,7 @@ export const rejectChanges = createAsyncThunk(
   'approve-changes',
   async (arg: {registryId: string, changeId: string}, {dispatch}) => {
     dispatch(setLoading());
-    await entriesApi.rejectChanges(arg.registryId, arg.changeId);
-    dispatch(getEntries({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
+    await proposedChangesApi.rejectChanges(arg.registryId, arg.changeId);
+    dispatch(getChanges({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
   }
-);*/
+);
