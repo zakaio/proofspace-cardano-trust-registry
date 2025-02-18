@@ -55,6 +55,23 @@ export const getEntries = createAsyncThunk(
   }
 );
 
+export const reloadEntries = createAsyncThunk(
+  'reload-entries',
+  async (arg: {registryId: string}, {dispatch}) => {
+    dispatch(setLoading());
+    let offset = (currentPage - 1) * itemsPerPage;
+    if (offset < 0) {
+      offset = 0;
+    }
+
+    const entries = await entriesApi.list(
+      {parent: arg.registryId, range: {limit: itemsPerPage, offset}, commonFilter: filter}
+    );
+
+    dispatch(setEntries({ ...entries, currentPage, itemsPerPage, filter}));
+  }
+);
+
 /*export const proposeChanges = createAsyncThunk(
   'propose-changes',
   async (arg: {registryId: string, added: string[], removed: string[]}, {dispatch}) => {

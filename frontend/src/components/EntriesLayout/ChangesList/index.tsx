@@ -20,13 +20,13 @@ import {getWorkAreaSizes} from "../../../utils/domUtil";
 import {approveChanges, getChanges, rejectChanges} from "../../../app/state/proposedChanges";
 import {ProposedChange} from "../../../domain/ProposedChange";
 
-interface ProposedChangeProps {
+interface BtnsProps {
   change: ProposedChange;
   onAprove: (change: ProposedChange) => void;
   onReject: (change: ProposedChange) => void;
 }
-const ProposedChangeRenderer: FC<ProposedChangeProps> = ({change, onAprove, onReject}) => {
-  if (!change) {
+const ButtonsRenderer: FC<BtnsProps> = ({change, onAprove, onReject}) => {
+  if (!change || change.approved) {
     return (<div/>);
   }
   const approveHandler = (evt: any) => {
@@ -43,18 +43,24 @@ const ProposedChangeRenderer: FC<ProposedChangeProps> = ({change, onAprove, onRe
 
   return (
     <div>
-      <div>{change.status.type}</div>
-      <div style={{color: '#BAB8B5', fontSize: 12}}>{dateFormat(change.changeDate, "yyyy-mm-dd\'T\'HH:MM:ss")}</div>
       <AlignedHGroup>
         <div>
-          <IconButton onClick={approveHandler}>
-            <ThumbUpIcon style={{color: '#26C446'}}/>
-          </IconButton>
+          <Button
+            variant={'outlined'}
+            startIcon={(<ThumbUpIcon style={{color: '#26C446'}}/>)}
+            onClick={approveHandler}
+          >
+            {localize('APPROVE')}
+          </Button>
         </div>
-        <div>
-          <IconButton onClick={rejectHandler}>
-            <ThumbDownIcon style={{color: '#E51E13'}}/>
-          </IconButton>
+        <div style={{paddingLeft: 8}}>
+          <Button
+            variant={'outlined'}
+            startIcon={(<ThumbDownIcon style={{color: '#E51E13'}}/>)}
+            onClick={rejectHandler}
+          >
+            {localize('REJECT')}
+          </Button>
         </div>
       </AlignedHGroup>
     </div>
@@ -90,18 +96,31 @@ const ChangesList: FC<Props> = ({registryId}) => {
   const onReject = (change: ProposedChange) => dispatch(rejectChanges({registryId, changeId: change.identity}));
 
   const columns: Column<ProposedChange>[] = [
-    {id: "identity", label: localize('DID')},
-    {
-      id: "status",
-      label: localize('Status'),
-      renderer: (item) => (<div>{item.status ? item.status.type : 'unknown'}</div>)
+    {id: "identity", label: localize('CHANGE_ID')},
+    {id: 'changeDate', label: localize('DATE'), renderer: (item) => (
+        <div style={{color: '#BAB8B5', fontSize: 12}}>
+          {dateFormat(item.changeDate, "yyyy-mm-dd\'T\'HH:MM:ss")}
+        </div>
+      )
+    },
+    {id: "addedDids", label: localize('ADDED'), renderer: (item) => (
+        <div style={{maxWidth: 200, color: '#26C446'}}>
+          {item.addedDids ? item.addedDids.join(', ') : ''}
+        </div>
+      )
+    },
+    {id: "removedDids", label: localize('REMOVED'), renderer: (item) => (
+        <div style={{maxWidth: 200, color: '#E51E13'}}>
+          {item.removedDids ? item.removedDids.join(', ') : ''}
+        </div>
+      )
     },
     {
-      id: 'proposedChange',
-      label: localize('PROPOSED_CHANGE'),
+      id: 'identity',
+      label: '',
       renderer: (item) => (
-        <ProposedChangeRenderer
-          change={item.proposedChange}
+        <ButtonsRenderer
+          change={item}
           onAprove={onApprove}
           onReject={onReject}
         />
