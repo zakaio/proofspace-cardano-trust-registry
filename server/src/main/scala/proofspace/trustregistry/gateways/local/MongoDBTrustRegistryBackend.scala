@@ -376,7 +376,6 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
         Project(BSONDocument(
           "registryId" -> 1,
           "changeId" -> "$changes.changeId",
-          "didChanges" -> "$changes.didChanges",
           "addedDids" -> BSONDocument(
             "$map" -> BSONDocument(
               "input" -> BSONDocument(
