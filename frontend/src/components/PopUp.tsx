@@ -30,7 +30,7 @@ export default class PopUp extends React.Component<IProps> {
         disableRestoreFocus={this.props.disableRestoreFocus}
         disableScrollLock={this.props.disableScrollLock}
       >
-        <div style={{paddingLeft: 32, paddingRight: 32}}>
+        <div style={{paddingLeft: 32, paddingRight: 32, paddingTop: 24}}>
           <ContentHeader style={{minWidth: this.props.minWidth || 700}}>
             <Typography variant="h6">{this.props.title}</Typography>
             {this.props.headerChildren}

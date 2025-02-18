@@ -73,10 +73,11 @@ const RegistryList: FC<{}> = () => {
 
   const columns: Column<Registry>[] = [
     {id: "name", label: localize('NAME')},
+    {id: "schema", label: localize('SCHEMA')},
     {id: "network", label: localize('NETWORK')},
     {id: "subnetwork", label: localize('SUB_NETWORK')},
     {id: "didPrefix", label: localize('DID_PREFIX')},
-    {
+    /*{
       id: "identity",
       label: '',
       renderer: (item) => (
@@ -84,7 +85,7 @@ const RegistryList: FC<{}> = () => {
           <EditIcon/>
         </IconButton>
       )
-    },
+    },*/
     {
       id: "identity",
       label: '',

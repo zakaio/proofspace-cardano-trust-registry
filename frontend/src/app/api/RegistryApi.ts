@@ -8,17 +8,26 @@ import {Registry} from "../../domain/Registry";
 interface RegistryApiObject {
   id: string;
   name: string;
+  schema: string;
   network: string;
   subnetwork: string;
   didPrefix: string;
+  proofspaceServiceDid: string;
+  proofspaceNetwork: string;
+  createTargetAddress: string;
+  createSubmitCost: number;
+  changeTargetAddress: string;
+  changeSubmitCost: number;
+  targetMintingPolicy: string;
+  changeSubmitMintingPolicy: string;
   lastChangeDate: string
 }
 
-const FAKE: RegistryApiObject [] = [
+/*const FAKE: RegistryApiObject [] = [
   {id: '1', name: 'one', network: 'main', subnetwork: 'test', didPrefix: 'aaaa_', lastChangeDate: ''},
   {id: '2', name: 'two', network: 'main', subnetwork: 'test', didPrefix: 'bbbb_', lastChangeDate: ''},
   {id: '3', name: 'reee', network: 'main', subnetwork: 'test2', didPrefix: 'ccc_', lastChangeDate: ''}
-];
+];*/
 
 class RegistryConverter extends Converter<Registry, RegistryApiObject> {
   apiObjectToItem(obj: RegistryApiObject): Registry {
