@@ -18,6 +18,7 @@ import {proposeChanges} from "../../app/state/proposedChanges";
 import TabbedPanel, {TabItem} from "../TabbedPanel";
 import ChangesList from "./ChangesList";
 import EntriesList from "./EntriesList";
+import {find} from "lodash";
 
 const tabItems = (registryId: string) => {
   const result: TabItem[] = [
@@ -40,6 +41,8 @@ const EntriesLayout: FC<{}> = () => {
   const dispatch = useAppDispatch();
 
   const [open, setOpen] = useState(false);
+  const registries = useAppSelector((state) => state.registry.items);
+  const selected = find(registries, (r) => r.identity === id);
 
   const onProposeChanges = (added: string[], removed: string[]) => {
     setOpen(false);
@@ -60,7 +63,9 @@ const EntriesLayout: FC<{}> = () => {
             >
               <div style={{fontSize: 18, fontWeight: 600}}>{localize('REGISTRIES_LIST')}</div>
             </Link>
-            <div style={{fontSize: 18, fontWeight: 600, paddingRight: 32}}>{id || ''}</div>
+            <div style={{fontSize: 18, fontWeight: 600, paddingRight: 32}}>
+              {id || ''} {selected && selected.schema ? `(${localize('SCHEMA')}: ${selected.schema})` : ''}
+            </div>
           </Breadcrumbs>
           <div>
             <HintIcon>

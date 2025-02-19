@@ -2,6 +2,7 @@ import {createAsyncThunk, createSlice, PayloadAction} from "@reduxjs/toolkit";
 import {ItemsState} from "./base";
 import {proposedChangesApi} from "../api/API";
 import {ProposedChange} from "../../domain/ProposedChange";
+import {reloadEntries} from "./entries";
 
 let itemsPerPage = 9;
 let currentPage = 1;
@@ -61,6 +62,7 @@ export const proposeChanges = createAsyncThunk(
     dispatch(setLoading());
     await proposedChangesApi.proposeChanges(arg.registryId, arg.added, arg.removed);
     dispatch(getChanges({registryId: arg.registryId, currentPage, itemsPerPage, filter}));
+    dispatch(reloadEntries({registryId: arg.registryId}));
   }
 );
 

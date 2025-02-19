@@ -20,9 +20,18 @@ interface Props {
 
 const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
   const [name, setName] = useState('');
+  const [schema, setSchema] = useState('');
   const [network, setNetwork] = useState('');
   const [subnetwork, setSubnetwork] = useState('');
   const [didPrefix, setDidPrefix] = useState('');
+  /*const [proofspaceServiceDid, setProofspaceServiceDid] = useState('');
+  const [proofspaceNetwork, setProofspaceNetwork] = useState('');*/
+  const [createTargetAddress, setCreateTargetAddress] = useState('');
+  const [createSubmitCost, setCreateSubmitCost] = useState(0);
+  const [changeTargetAddress, setChangeTargetAddress] = useState('');
+  const [changeSubmitCost, setChangeSubmitCost] = useState(0);
+  const [targetMintingPolicy, setTargetMintingPolicy] = useState('');
+  const [changeSubmitMintingPolicy, setChangeSubmitMintingPolicy] = useState('');
 
   const networks = useAppSelector((state) => state.registry.networks);
   console.log('nets', networks);
@@ -43,7 +52,16 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
   }, [item, networks]);
 
   const submit = () => {
-    onSave({identity: item ? item.identity : '', name, network, subnetwork, didPrefix, lastChangeDate: ''})
+    const result: Registry = {identity: item ? item.identity : '', name, schema, network, subnetwork, didPrefix};
+    if (network === 'cardano') {
+      result.createTargetAddress = createTargetAddress;
+      result.createSubmitCost = createSubmitCost;
+      result.changeTargetAddress = changeTargetAddress;
+      result.changeSubmitCost = changeSubmitCost;
+      result.targetMintingPolicy = targetMintingPolicy;
+      result.changeSubmitMintingPolicy = changeSubmitMintingPolicy;
+    }
+    onSave(result);
   };
 
   const onNetworkChange = (v: string) => {
@@ -95,6 +113,19 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
             </div>
           </AlignedHGroup>
           <AlignedHGroup style={{paddingTop: 32}}>
+            <div style={{width: 155, color: '#8E8E8E'}}>{localize('SCHEMA')}</div>
+            <div style={{width: 315}}>
+              <TextField
+                style={{width: 300}}
+                value={schema}
+                onChange={(evt) => setSchema(evt.target.value)}
+                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                variant="outlined"
+              />
+            </div>
+          </AlignedHGroup>
+          <AlignedHGroup style={{paddingTop: 32}}>
             <div style={{width: 155, color: '#8E8E8E'}}>{localize('NETWORK')}</div>
             <div style={{width: 315}}>
               <PrettyDropSelector items={networkItems} selected={network} onChange={onNetworkChange}/>
@@ -122,6 +153,116 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
               />
             </div>
           </AlignedHGroup>
+          {/*}
+          <AlignedHGroup style={{paddingTop: 32}}>
+            <div style={{width: 155, color: '#8E8E8E'}}>{localize('PROOFSPACE_SERVICE_DID')}</div>
+            <div style={{width: 315}}>
+              <TextField
+                style={{width: 300}}
+                value={proofspaceServiceDid}
+                onChange={(evt) => setProofspaceServiceDid(evt.target.value)}
+                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                variant="outlined"
+              />
+            </div>
+          </AlignedHGroup>
+          <AlignedHGroup style={{paddingTop: 32}}>
+            <div style={{width: 155, color: '#8E8E8E'}}>{localize('PROOFSPACE_NETWORK')}</div>
+            <div style={{width: 315}}>
+              <TextField
+                style={{width: 300}}
+                value={proofspaceNetwork}
+                onChange={(evt) => setProofspaceNetwork(evt.target.value)}
+                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                variant="outlined"
+              />
+            </div>
+          </AlignedHGroup>
+          {*/}
+          {network === 'cardano' && (<div>
+          <AlignedHGroup style={{paddingTop: 32}}>
+            <div style={{width: 155, color: '#8E8E8E'}}>{localize('CREATE_TARGET_ADDRESS')}</div>
+            <div style={{width: 315}}>
+              <TextField
+                style={{width: 300}}
+                value={createTargetAddress}
+                onChange={(evt) => setCreateTargetAddress(evt.target.value)}
+                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                variant="outlined"
+              />
+            </div>
+          </AlignedHGroup>
+          <AlignedHGroup style={{paddingTop: 32}}>
+            <div style={{width: 155, color: '#8E8E8E'}}>{localize('CREATE_SUBMIT_COST')}</div>
+            <div style={{width: 315}}>
+              <TextField
+                style={{width: 300}}
+                type={'number'}
+                value={createSubmitCost}
+                onChange={(evt) => setCreateSubmitCost(parseInt(evt.target.value, 10))}
+                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                variant="outlined"
+              />
+            </div>
+          </AlignedHGroup>
+          <AlignedHGroup style={{paddingTop: 32}}>
+            <div style={{width: 155, color: '#8E8E8E'}}>{localize('CHANGE_TARGET_ADDRESS')}</div>
+            <div style={{width: 315}}>
+              <TextField
+                style={{width: 300}}
+                value={changeTargetAddress}
+                onChange={(evt) => setChangeTargetAddress(evt.target.value)}
+                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                variant="outlined"
+              />
+            </div>
+          </AlignedHGroup>
+          <AlignedHGroup style={{paddingTop: 32}}>
+            <div style={{width: 155, color: '#8E8E8E'}}>{localize('CHANGE_SUBMIT_COST')}</div>
+            <div style={{width: 315}}>
+              <TextField
+                style={{width: 300}}
+                type={'number'}
+                value={changeSubmitCost}
+                onChange={(evt) => setChangeSubmitCost(parseInt(evt.target.value, 10))}
+                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                variant="outlined"
+              />
+            </div>
+          </AlignedHGroup>
+          <AlignedHGroup style={{paddingTop: 32}}>
+            <div style={{width: 155, color: '#8E8E8E'}}>{localize('TARGET_MINTING_POLICY')}</div>
+            <div style={{width: 315}}>
+              <TextField
+                style={{width: 300}}
+                value={targetMintingPolicy}
+                onChange={(evt) => setTargetMintingPolicy(evt.target.value)}
+                inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                variant="outlined"
+              />
+            </div>
+          </AlignedHGroup>
+            <AlignedHGroup style={{paddingTop: 32}}>
+              <div style={{width: 155, color: '#8E8E8E'}}>{localize('CHANGE_SUBMIT_MINTING_POLICY')}</div>
+              <div style={{width: 315}}>
+                <TextField
+                  style={{width: 300}}
+                  value={changeSubmitMintingPolicy}
+                  onChange={(evt) => setChangeSubmitMintingPolicy(evt.target.value)}
+                  inputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                  InputProps={{style: {paddingTop: 0, paddingBottom: 0, height: 32}}}
+                  variant="outlined"
+                />
+              </div>
+          </AlignedHGroup>
+          </div>)}
         </Panel>
       </div>
       <div style={{textAlign: 'right', padding: 32}}>
@@ -135,6 +276,7 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
         <Button
           variant={'contained'}
           onClick={submit}
+          disabled={!name || !didPrefix}
         >
           {localize('SUBMIT')}
         </Button>
