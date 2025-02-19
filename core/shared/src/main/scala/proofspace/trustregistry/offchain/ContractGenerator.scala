@@ -50,6 +50,7 @@ trait ContractGenerator {
                             contractParameters: Seq[String],
                            ): scalus.uplc.Term
 
+  def hasApprovalProcess: Boolean
 
   def minChangeCost(contractParameters: Seq[String]): BigInt
   

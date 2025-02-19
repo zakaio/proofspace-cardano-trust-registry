@@ -32,6 +32,8 @@ class SingleMaintainerGenerator(override val cardanoOfflineAccess: CardanoOfflin
     val retval = mintingPolicyFun $ pkhBytes $ scalus.builtin.ByteString.fromString(name)
     retval
   }
+  
+  override def hasApprovalProcess: Boolean = false
 
   override def generateSubmitMintingPolicy(name: String, contractParameters: Seq[String]): Term = {
     generateTargetMintingPolicy(name, contractParameters)

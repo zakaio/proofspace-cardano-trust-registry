@@ -38,10 +38,11 @@ class SubmitWithCostMaintainerApproveGenerator(override val cardanoOfflineAccess
 
   override def generateTargetMintingPolicy(registryName: String, contractParameters: Seq[String]): scalus.uplc.Term = {
     val pkh = getPkh(contractParameters, PKH_IDX)
+    val pkhBytes = pkh.hash
     val cost = BigInt(getInteger(contractParameters, COST_IDX))
     val regName = scalus.builtin.ByteString.fromString(registryName)
-    val mintingPolicyPar = scalus.Compiler.compile(SubmitWithCostMaintainerApprove.approvedMintingPolicy(_,_)).toUplc(true)
-    val mintingPolicyFun = mintingPolicyPar $ regName $ cost
+    val mintingPolicyPar = scalus.Compiler.compile(SubmitWithCostMaintainerApprove.approvedMintingPolicy(_,_,_)).toUplc(true)
+    val mintingPolicyFun = mintingPolicyPar $ regName $ cost $ pkhBytes
     mintingPolicyFun
   }
 
@@ -64,6 +65,8 @@ class SubmitWithCostMaintainerApproveGenerator(override val cardanoOfflineAccess
     val mintingPolicyFun = mintingPolicyPar $ regName $ cost $ addressBytes $ isScript
     mintingPolicyFun
   }
+
+  override def hasApprovalProcess: Boolean = true
   
   override def minChangeCost(contractParameters: Seq[String]): BigInt =
     BigInt(getInteger(contractParameters, COST_IDX))  

@@ -5,7 +5,7 @@ import scalus.Compile
 import scalus.builtin.ByteString
 import scalus.builtin.Data.FromData
 import scalus.ledger.api.v2.OutputDatum
-import scalus.ledger.api.v3.{Datum, PubKeyHash, ScriptContext, ScriptInfo, TxInfo, TxOut}
+import scalus.ledger.api.v3.{Datum, PubKeyHash, ScriptContext, ScriptInfo, TxInInfo, TxInfo, TxOut}
 import scalus.prelude.{AssocMap, Maybe}
 import scalus.prelude.Prelude.{*, given}
 
@@ -34,9 +34,9 @@ object MintingPolicyElements {
           case _ => throw new Exception("Unknown datum hash in the output")
   }
 
-  def filterMinted(ctx: ScriptContext, registryName: ByteString,
-                   checkOps: (TxOut, TrustRegistryDatum, scalus.prelude.List[TrustRegistryOperation]) => Boolean,
-                   checkOtherOut: TxOut => Unit = _ => (),
+  def filterMintedOutputs(ctx: ScriptContext, registryName: ByteString,
+                          checkOps: (TxOut, TrustRegistryDatum, scalus.prelude.List[TrustRegistryOperation]) => Boolean,
+                          checkOtherOut: TxOut => Unit = _ => (),
                   ): scalus.prelude.List[TxOut] = {
     val ownSym = ctx.scriptInfo match
       case ScriptInfo.MintingScript(sym) => sym
@@ -75,5 +75,7 @@ object MintingPolicyElements {
             false
     }
   }
+  
+  
 
 }

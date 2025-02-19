@@ -40,15 +40,12 @@ object SindleMaintainer  {
   def mintingPolicy(pkhBytes: ByteString, registryName: ByteString)(ctx: ScriptContext): Unit = {
     val pkh = new PubKeyHash(pkhBytes)
     val txInfo = ctx.txInfo
-
-    val ownSym = ctx.scriptInfo match
-      case ScriptInfo.MintingScript(sym) => sym
-      case _ => throw new Exception("Minting script is expected")
-
+    
     val unused = MintingPolicyElements.verifyPkh(pkh)(ctx)
 
-    val myOutputs = MintingPolicyElements.filterMinted(ctx, registryName, (txOut, parsedDatum, ops) => true) 
+    val myOutputs = MintingPolicyElements.filterMintedOutputs(ctx, registryName, (txOut, parsedDatum, ops) => true)
     
+   
     if (scalus.prelude.List.isEmpty(myOutputs)) then
       throw new Exception("No outputs with the given name")
 

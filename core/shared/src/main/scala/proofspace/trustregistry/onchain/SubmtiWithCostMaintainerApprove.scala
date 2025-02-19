@@ -2,7 +2,7 @@ package proofspace.trustregistry.onchain
 
 import proofspace.trustregistry.model.{TrustRegistryDatum, TrustRegistryOperation}
 import scalus.builtin.ByteString
-import scalus.ledger.api.v3.{Address, ScriptContext, TxOut}
+import scalus.ledger.api.v3.{Address, ScriptContext, ScriptInfo, TxOut}
 import scalus.prelude.{*, given}
 import scalus.prelude.Prelude.{*, given}
 
@@ -23,27 +23,31 @@ object SubmitWithCostMaintainerApprove {
    * @param ctx - context of the transaction
    */
   def submittForApproveMintingPolicy(registryName: ByteString, changeCost: BigInt, targetAddr: Address)(ctx: ScriptContext): Unit = {
-        val myOutputs = MintingPolicyElements.filterMinted(ctx, registryName,
+        val myOutputs = MintingPolicyElements.filterMintedOutputs(ctx, registryName,
             (txOut, parsedDatum, ops) => {
               if (txOut.address !== targetAddr) then
                 throw new Exception("Output address is not the target address")
-              operationsFromRefWithPayment(txOut, parsedDatum, changeCost)
+              operationsWithPayment(txOut, parsedDatum, changeCost)
             })
         if (scalus.prelude.List.isEmpty(myOutputs)) then
           throw new Exception("No minted outputs with the given name")
   }
      
      
-  def approvedMintingPolicy(registryName: ByteString, changeCost: BigInt)(ctx: ScriptContext): Unit = {
-    val myOutputs = MintingPolicyElements.filterMinted(ctx, registryName, 
-        (txOut, parsedDatum, ops) =>
-          operationsFromRefWithPayment(txOut, parsedDatum, changeCost)
-    )
-    if (scalus.prelude.List.isEmpty(myOutputs)) then
-      throw new Exception("No minted outputs with the given name")
+  def approvedMintingPolicy(registryName: ByteString, submitMintingPolicyId: ByteString, pkhBytes: ByteString)(ctx: ScriptContext): Unit = {
+    val unused = scalus.prelude.List.findOrFail(ctx.txInfo.signatories)(_.hash === pkhBytes)
+    val myInputs = scalus.prelude.List.findOrFail(ctx.txInfo.inputs){
+      txIn =>
+        AssocMap.lookup(txIn.resolved.value)(submitMintingPolicyId) match
+          case scalus.prelude.Maybe.Just(byNames) =>
+            AssocMap.lookup(byNames)(registryName) match
+              case scalus.prelude.Maybe.Just(v) => true
+              case _ => false
+          case _ => false
+    }
   }
 
-  def operationsFromRefWithPayment(txOut: TxOut, parsedDatum: TrustRegistryDatum, changeCost: BigInt): Boolean = {
+  def operationsWithPayment(txOut: TxOut, parsedDatum: TrustRegistryDatum, changeCost: BigInt): Boolean = {
     AssocMap.lookup(txOut.value)(ByteString.empty) match
       case Maybe.Just(value) =>
         AssocMap.lookup(value)(ByteString.empty) match
@@ -54,11 +58,6 @@ object SubmitWithCostMaintainerApprove {
             throw new Exception("No cost in the output")
       case Maybe.Nothing =>
         throw new Exception("No value in the output")
-    parsedDatum match
-      case TrustRegistryDatum.Operations(ops) =>
-        throw new Exception("Datum in minted op should be a reference")
-      case _ =>
-    // do nothing
     true
   }
 

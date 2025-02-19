@@ -46,6 +46,8 @@ class UsingVotingTokensGenerator(override val cardanoOfflineAccess: CardanoOffli
       case Credential.PubKeyCredential(pubKeyHash) => (pubKeyHash.hash, false)
       case Credential.ScriptCredential(validatorHash) => (validatorHash, true)
     }
+    val submitMintingPolicy = generateSubmitMintingPolicy(name, contractParameters)
+    val submitMintingPolicyId = cardanoOfflineAccess.translateUplcToMintingPolicyId(submitMintingPolicy)
     val uplcPar = scalus.Compiler.compile({
       (registryName: ByteString,
        votingToken: ByteString,
@@ -53,17 +55,13 @@ class UsingVotingTokensGenerator(override val cardanoOfflineAccess: CardanoOffli
        changeCostVotingToken: BigInt,
        changeCostAda: BigInt,
        targetCredBytes: ByteString,
-       targetCredIsScript: Boolean
+       submitMintingPolicyId: ByteString
       ) =>
-        val targetCredential =
-          if targetCredIsScript then
-            new Credential.ScriptCredential(targetCredBytes)
-          else
-            new Credential.PubKeyCredential(new PubKeyHash(targetCredBytes))
-        val targetAddress = new Address(targetCredential, Maybe.Nothing)
-        UsingVotingTokens.mintingPolicy(registryName, votingToken, votingTokenAsset, changeCostVotingToken, changeCostAda, targetAddress)
+        val targetCredential = new Credential.ScriptCredential(targetCredBytes)
+        UsingVotingTokens.mintingPolicy(registryName, votingToken, votingTokenAsset,
+          changeCostVotingToken, changeCostAda, targetCredential, submitMintingPolicyId)
     }).toUplc(true)
-    val fun = uplcPar $ registryName $ votingToken $ votingTokenAsset $ changeCostVotingToken $ changeCostAda $ targetCredBytes $ targetIsScript
+    val fun = uplcPar $ registryName $ votingToken $ votingTokenAsset $ changeCostVotingToken $ changeCostAda $ targetCredBytes $ submitMintingPolicyId
     fun
   }
 
@@ -85,6 +83,8 @@ class UsingVotingTokensGenerator(override val cardanoOfflineAccess: CardanoOffli
     val uplc = uplcPar $ regName $ cost $ addressBytes $ isScript
     uplc
   }
+
+  override def hasApprovalProcess: Boolean = true
 
   override def minChangeCost(contractParameters: Seq[String]): BigInt =
     BigInt(getInteger(contractParameters, COST_ADA_IDX))
