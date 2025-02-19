@@ -24,8 +24,8 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
   const [network, setNetwork] = useState('');
   const [subnetwork, setSubnetwork] = useState('');
   const [didPrefix, setDidPrefix] = useState('');
-  const [proofspaceServiceDid, setProofspaceServiceDid] = useState('');
-  const [proofspaceNetwork, setProofspaceNetwork] = useState('');
+  /*const [proofspaceServiceDid, setProofspaceServiceDid] = useState('');
+  const [proofspaceNetwork, setProofspaceNetwork] = useState('');*/
   const [createTargetAddress, setCreateTargetAddress] = useState('');
   const [createSubmitCost, setCreateSubmitCost] = useState(0);
   const [changeTargetAddress, setChangeTargetAddress] = useState('');
@@ -52,12 +52,16 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
   }, [item, networks]);
 
   const submit = () => {
-    onSave({
-      identity: item ? item.identity : '',
-      name, schema, proofspaceServiceDid, proofspaceNetwork, network, subnetwork, didPrefix, createTargetAddress,
-      createSubmitCost, changeTargetAddress, changeSubmitCost, targetMintingPolicy, changeSubmitMintingPolicy,
-      lastChangeDate: ''
-    })
+    const result: Registry = {identity: item ? item.identity : '', name, schema, network, subnetwork, didPrefix};
+    if (network === 'cardano') {
+      result.createTargetAddress = createTargetAddress;
+      result.createSubmitCost = createSubmitCost;
+      result.changeTargetAddress = changeTargetAddress;
+      result.changeSubmitCost = changeSubmitCost;
+      result.targetMintingPolicy = targetMintingPolicy;
+      result.changeSubmitMintingPolicy = changeSubmitMintingPolicy;
+    }
+    onSave(result);
   };
 
   const onNetworkChange = (v: string) => {
@@ -149,6 +153,7 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
               />
             </div>
           </AlignedHGroup>
+          {/*}
           <AlignedHGroup style={{paddingTop: 32}}>
             <div style={{width: 155, color: '#8E8E8E'}}>{localize('PROOFSPACE_SERVICE_DID')}</div>
             <div style={{width: 315}}>
@@ -175,6 +180,8 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
               />
             </div>
           </AlignedHGroup>
+          {*/}
+          {network === 'cardano' && (<div>
           <AlignedHGroup style={{paddingTop: 32}}>
             <div style={{width: 155, color: '#8E8E8E'}}>{localize('CREATE_TARGET_ADDRESS')}</div>
             <div style={{width: 315}}>
@@ -255,6 +262,7 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
                 />
               </div>
           </AlignedHGroup>
+          </div>)}
         </Panel>
       </div>
       <div style={{textAlign: 'right', padding: 32}}>

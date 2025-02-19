@@ -103,7 +103,7 @@ const EntriesList: FC<Props> = ({registryId}) => {
     {id: "identity", label: localize('DID')},
     {
       id: "status",
-      label: localize('Status'),
+      label: localize('STATUS'),
       renderer: (item) => (<div>{item.status ? item.status.type : 'unknown'}</div>)
     },
     {
