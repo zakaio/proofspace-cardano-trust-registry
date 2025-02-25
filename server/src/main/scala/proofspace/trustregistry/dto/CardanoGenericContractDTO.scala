@@ -3,13 +3,15 @@ package proofspace.trustregistry.dto
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
+
+
 case class CardanoGenericContractDTO(
                                       targetAddress: String,
-                                      changeSubmitCost: Int,
+                                      changeSubmitCost: Long,
                                       targetMintingPolicy: String,
                                       submitMintingPolicy: Option[String] = None,
-                                      votingTokenPolicty: Option[String] = None,
-                                      votingTokenAsset: Option[String] = None
+                                      votingTokenPolicy: Option[String] = None,
+                                      votingTokenAsset: Option[String] = None,
                                     )
 
 object CardanoGenericContractDTO {

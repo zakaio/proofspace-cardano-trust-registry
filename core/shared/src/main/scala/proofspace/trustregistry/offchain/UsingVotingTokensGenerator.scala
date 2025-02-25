@@ -13,13 +13,7 @@ import scalus.toUplc
 
 class UsingVotingTokensGenerator(override val cardanoOfflineAccess: CardanoOffchainAccess) extends ContractGenerator {
 
-  override def parametersDescription: Seq[ContractParameter] = Seq(
-    ContractParameter("votingTokens", "Voting tokens for voting for changes", ContractParameterType.String),
-    ContractParameter("votingTokenAsset", "Asset of voting tokens", ContractParameterType.String),
-    ContractParameter("costVotingToken", "Minimal number of voting token", ContractParameterType.Integer),
-    ContractParameter("costAda", "Minimal number of ADA", ContractParameterType.Integer),
-    ContractParameter("targetPkh", "pubkeyhash of target address", ContractParameterType.Address),
-  )
+  override def parametersDescription: Seq[ContractParameter] = UsingVotingTokensGenerator.parametersDescription
 
   val VOTING_TOKENS_IDX = 0
   val VOTING_TOKEN_ASSET_IDX = 1
@@ -81,5 +75,18 @@ class UsingVotingTokensGenerator(override val cardanoOfflineAccess: CardanoOffch
 
   override def minChangeCost(contractParameters: Seq[String]): BigInt =
     BigInt(getInteger(contractParameters, COST_ADA_IDX))
+
+}
+
+object UsingVotingTokensGenerator {
+
+  val parametersDescription: Seq[ContractParameter] = Seq(
+    ContractParameter("votingTokens", "Voting tokens for voting for changes", ContractParameterType.String),
+    ContractParameter("votingTokenAsset", "Asset of voting tokens", ContractParameterType.String),
+    ContractParameter("costVotingToken", "Minimal number of voting token", ContractParameterType.Integer),
+    ContractParameter("costAda", "Minimal number of ADA", ContractParameterType.Integer),
+    ContractParameter("targetPkh", "pubkeyhash of target address", ContractParameterType.Address),
+  )
+
 
 }

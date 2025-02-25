@@ -1,5 +1,6 @@
 package proofspace.trustregistry.offchain
 
+import scalus.builtin.ByteString
 import scalus.ledger.api.v3.{Address, PubKeyHash}
 
 enum ContractParameterType {
@@ -54,6 +55,8 @@ trait ContractGenerator {
 
   def minChangeCost(contractParameters: Seq[String]): BigInt
   
+  def votingTokens(contractParameters: Seq[String]): Option[ContractGenerator.VotingToken] = None
+  
   protected def cardanoOfflineAccess: CardanoOffchainAccess
 
   protected def getPkh(params:Seq[String], idx:Int): PubKeyHash = {
@@ -72,3 +75,8 @@ trait ContractGenerator {
 
 }
 
+object ContractGenerator {
+  
+  case class VotingToken(votingToken: ByteString, votingTokenAsset: ByteString, changeCostVotingToken: BigInt, changeCostAda: BigInt)
+  
+}

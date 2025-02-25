@@ -2,6 +2,7 @@ package proofspace.trustregistry.controllers
 
 import scala.concurrent.Future
 import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import com.github.rssh.appcontext.{AppContext, AppContextProvider}
 import org.slf4j.LoggerFactory
 import proofspace.trustregistry.AppConfig
@@ -22,6 +23,9 @@ class BaseTapirController(using AppContextProvider[AppConfig]) {
     override def encodeValue(x: Boolean, out: JsonWriter): Unit = out.writeVal(x)
     override def nullValue: Boolean = false
   }
+
+  given seqValueCodec[T](using JsonValueCodec[T]):JsonValueCodec[Seq[T]] = JsonCodecMaker.make
+
 
   protected def verifySignature(bearer: Option[String], signature: Option[String], optServiceDid: Option[String], optNetwork: Option[String]):
     Future[Either[HttpExceptionDTO, (String, String)]] = {

@@ -18,6 +18,7 @@ import cps.*
 import cps.monads.FutureAsyncMonad
 import proofspace.trustregistry.controllers.HttpException
 import proofspace.trustregistry.model.{TrustRegistryDatum, TrustRegistryOperation}
+import proofspace.trustregistry.gateways.cardano.CardanoHelper
 import scalus.builtin.ByteString
 import scalus.utils.Hex
 import scalus.bloxbean.Interop
@@ -34,7 +35,7 @@ class GenericContractTransactionBuilder(contract: CardanoGenericContractDTO,
                                ) extends ContractTransactionBuilder(bfService, senderAddress, signerKeys) {
 
   override def buildCreateTransaction(name: String, snetwork: String): Future[String] = async[Future]{
-    val network = asNetwork(snetwork)
+    val network = CardanoHelper.asNetwork(snetwork)
     val targetOrSubmitMintingPolicy = contract.submitMintingPolicy.getOrElse(contract.targetMintingPolicy)
     val targetMintingScript = createMintingPolicyScript(targetOrSubmitMintingPolicy).await
     val targetAddressScript = createAddressScript(scriptHashFromBench32Address(contract.targetAddress)).await
@@ -59,7 +60,7 @@ class GenericContractTransactionBuilder(contract: CardanoGenericContractDTO,
   }
   
   override def buildSubmitChangeTransaction(name: String, snetwork: String, change: TrustRegistryChangeDTO): Future[String] =  async[Future] {
-    val network = asNetwork(snetwork)
+    val network = CardanoHelper.asNetwork(snetwork)
     val targetAddressScript = createAddressScript(scriptHashFromBench32Address(contract.targetAddress)).await
     val targetAddress = buildTargetAddress(name, snetwork).await
     val targetOrSubmitMintingPolicy = contract.submitMintingPolicy.getOrElse(contract.targetMintingPolicy)
@@ -87,7 +88,7 @@ class GenericContractTransactionBuilder(contract: CardanoGenericContractDTO,
   }
   
   override def buildApproveTransaction(name: String, snetwork: String, submitTransactionId: String): Future[String] = async[Future] {
-    val network = asNetwork(snetwork)
+    val network = CardanoHelper.asNetwork(snetwork)
     val targetAddressScript = createAddressScript(scriptHashFromBench32Address(contract.targetAddress)).await
     val targetAddress = buildTargetAddress(name, snetwork).await
     val targetMintingPolicy = createMintingPolicyScript(contract.targetMintingPolicy).await
@@ -123,7 +124,7 @@ class GenericContractTransactionBuilder(contract: CardanoGenericContractDTO,
     if (!hasAppoveAndRejectTransactions) {
       throw IllegalArgumentException("Approval process is not supported by the contract")
     }
-    val network = asNetwork(snetwork)
+    val network = CardanoHelper.asNetwork(snetwork)
     val targetAddressScript = createAddressScript(scriptHashFromBench32Address(contract.targetAddress)).await
     val targetAddress = buildTargetAddress(name, snetwork).await
     val submitMintingPolicyScript = createMintingPolicyScript(contract.submitMintingPolicy.get).await

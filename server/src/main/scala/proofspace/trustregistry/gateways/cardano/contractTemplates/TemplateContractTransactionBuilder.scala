@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import cps.*
 import cps.monads.{*, given}
 import proofspace.trustregistry.dto.*
-import proofspace.trustregistry.gateways.cardano.BlockfrostSessions
+import proofspace.trustregistry.gateways.cardano.{BlockfrostSessions, CardanoHelper}
 import proofspace.trustregistry.offchain.*
 import com.bloxbean.cardano.client.common.CardanoConstants
 import com.bloxbean.cardano.client.transaction.*
@@ -44,7 +44,7 @@ class TemplateContractTransactionBuilder(contract: CardanoContractDTO,
   
 
   def buildCreateTransaction(name: String, snetwork: String): Future[String] = {
-      val network = asNetwork(snetwork)
+      val network = CardanoHelper.asNetwork(snetwork)
       val (targetAddress, targetScript) = targetAddressAndScript(name, network)
       
       
@@ -74,7 +74,7 @@ class TemplateContractTransactionBuilder(contract: CardanoContractDTO,
   }
 
   override def buildSubmitChangeTransaction(name: String, snetwork: String, change: TrustRegistryChangeDTO): Future[String] = {
-      val network = asNetwork(snetwork)
+      val network = CardanoHelper.asNetwork(snetwork)
       val (targetAddress, targetScript) = targetAddressAndScript(name, network)
       val submitMintingPolicy = generator.generateSubmitMintingPolicy(name, contract.parameters).plutusV3
       val operations = changeToOperations(change)
@@ -103,7 +103,7 @@ class TemplateContractTransactionBuilder(contract: CardanoContractDTO,
     if (!generator.hasApprovalProcess) {
       throw IllegalArgumentException("Approval process is not supported by the contract")
     }
-    val network = asNetwork(snetwork)
+    val network = CardanoHelper.asNetwork(snetwork)
     val (targetAddress, targetScript) = targetAddressAndScript(name, network)
     val approveMintingPolicy = generator.generateTargetMintingPolicy(name, contract.parameters).plutusV3
     val mintingPolicyScript = new MintingPolicyScript(approveMintingPolicy)
@@ -135,7 +135,7 @@ class TemplateContractTransactionBuilder(contract: CardanoContractDTO,
     if (!generator.hasApprovalProcess) {
       throw IllegalArgumentException("Approval process is not supported by the contract")
     }
-    val network = asNetwork(snetwork)
+    val network = CardanoHelper.asNetwork(snetwork)
     val (targetAddress, targetScript) = targetAddressAndScript(name, network)
     val submitMintingPolicy = generator.generateSubmitMintingPolicy(name, contract.parameters).plutusV3
     val submitMintingPolicyScript = new MintingPolicyScript(submitMintingPolicy)
@@ -178,7 +178,7 @@ class TemplateContractTransactionBuilder(contract: CardanoContractDTO,
   }
 
   override def buildTargetAddress(name: String, snetwork: String): Future[String] = {
-    val tas = targetAddressAndScript(name, asNetwork(snetwork))
+    val tas = targetAddressAndScript(name, CardanoHelper.asNetwork(snetwork))
     Future.successful(tas._1)
   }
 

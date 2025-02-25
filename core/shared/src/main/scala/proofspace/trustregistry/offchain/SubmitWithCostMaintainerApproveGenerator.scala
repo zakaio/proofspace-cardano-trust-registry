@@ -17,10 +17,8 @@ import scalus.uplc.TermDSL.{*, given}
 class SubmitWithCostMaintainerApproveGenerator(override val cardanoOfflineAccess: CardanoOffchainAccess) extends ContractGenerator {
 
 
-  override def parametersDescription: Seq[ContractParameter] = Seq(
-    ContractParameter("maintainer", "Maintainer of the trust registry", ContractParameterType.PubKeyHash),
-    ContractParameter("cost", "Cost of the transaction", ContractParameterType.Integer),
-  )
+  override def parametersDescription: Seq[ContractParameter] =
+    SubmitWithCostMaintainerApproveGenerator.parametersDescription
 
   final val PKH_IDX = 0
   final val COST_IDX = 1
@@ -67,5 +65,15 @@ class SubmitWithCostMaintainerApproveGenerator(override val cardanoOfflineAccess
   
   override def minChangeCost(contractParameters: Seq[String]): BigInt =
     BigInt(getInteger(contractParameters, COST_IDX))  
+
+}
+
+object SubmitWithCostMaintainerApproveGenerator {
+
+  val parametersDescription: Seq[ContractParameter] = Seq(
+    ContractParameter("maintainer", "Maintainer of the trust registry", ContractParameterType.PubKeyHash),
+    ContractParameter("cost", "Cost of the transaction", ContractParameterType.Integer),
+  )
+
 
 }

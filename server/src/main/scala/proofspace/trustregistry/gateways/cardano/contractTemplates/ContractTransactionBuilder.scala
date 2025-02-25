@@ -20,6 +20,7 @@ import scala.jdk.CollectionConverters.*
 import proofspace.trustregistry.model.*
 import proofspace.trustregistry.dto.{CardanoContractDTO, TrustRegistryChangeDTO}
 import proofspace.trustregistry.*
+import proofspace.trustregistry.gateways.cardano.CardanoHelper
 import scalus.bloxbean.Interop
 import scalus.prelude.{List as _, *}
 import scalus.prelude.Prelude.*
@@ -47,15 +48,6 @@ abstract class ContractTransactionBuilder(bfService: BFBackendService,senderAddr
   
   def buildVoteTransaction(name: String, snetwork: String, submitTransactionId: String, approve: Boolean): Future[String]
 
-
-  protected def asNetwork(snetwork: String): Network = {
-    snetwork match
-      case "mainnet" => Networks.mainnet()
-      case "testnet" => Networks.testnet()
-      case "preprod" => Networks.preprod()
-      case "preview" => Networks.preview()
-      case _ => throw IllegalArgumentException(s"Invalid network $snetwork")
-  }
 
   protected def sendTransaction(tx: Transaction): String = {
     val transactionService = bfService.getTransactionService
@@ -100,7 +92,7 @@ abstract class ContractTransactionBuilder(bfService: BFBackendService,senderAddr
         throw IllegalArgumentException(s"Seed phrase not found for network $snetwork")
       )
       case None => throw IllegalArgumentException(s"Signer key not found for network $snetwork")
-    val network = asNetwork(snetwork)
+    val network = CardanoHelper.asNetwork(snetwork)
     val signerAccount = new Account(network, singerMnemonic)
     val signer = SignerProviders.signerFrom(signerAccount)
     signer
