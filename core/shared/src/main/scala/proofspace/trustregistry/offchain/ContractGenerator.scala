@@ -54,7 +54,7 @@ trait ContractGenerator {
 
   def minChangeCost(contractParameters: Seq[String]): BigInt
   
-  protected def cardanoOfflineAccess: CardanoOfflineAccess
+  protected def cardanoOfflineAccess: CardanoOffchainAccess
 
   protected def getPkh(params:Seq[String], idx:Int): PubKeyHash = {
     val pkhBytes = scalus.builtin.ByteString.fromHex(params(idx))
@@ -69,13 +69,6 @@ trait ContractGenerator {
     params(idx)
   }
 
-  protected def getAddress(params:Seq[String], idx:Int): Address = {
-    cardanoOfflineAccess.translateBeth32ToAddress(params(idx))
-  }
 
 }
 
-object ContractGenerator {
-
-
-}

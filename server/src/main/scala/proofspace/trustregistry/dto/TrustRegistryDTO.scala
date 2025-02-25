@@ -22,11 +22,7 @@ object TrustRegistryDTO {
     given JsonValueCodec[TrustRegistryDTO] = JsonCodecMaker.make
 }
 
-case class CardanoTrustRegistryParams(
-                                      templateName: String,
-                                      parameters: Seq[String],
-                                     )
-                                     
+
 
 case class CreateTrustRegistryDTO(
                                    name: String,
@@ -36,12 +32,7 @@ case class CreateTrustRegistryDTO(
                                    proofspaceNetwork: Option[String] = None,
                                    didPrefix: Option[String] = None,
                                    schema: Option[String] = None,
-                                   createTargetAddress: Option[String] = None,
-                                   createSubmitCost: Option[Int] = None,
-                                   changeTargetAddress: Option[String] = None,
-                                   changeSubmitCost: Option[Int] = None,
-                                   targetMintingPolicy: Option[String] = None,
-                                   changeSubmitMintingPolicy: Option[String] = None,
+                                   cardano: Option[CardanoCreateParams] = None,
                                  )
 
 object CreateTrustRegistryDTO {
@@ -50,6 +41,16 @@ object CreateTrustRegistryDTO {
 
 }
 
+sealed trait CardanoCreateParams
+
+object CardanoCreateParams {
+
+  case class Generic(contract: CardanoGenericContractDTO) extends CardanoCreateParams
+  case class Template(contract: CardanoContractDTO) extends CardanoCreateParams
+
+  given JsonValueCodec[CardanoCreateParams] = JsonCodecMaker.make
+
+}
 
 case class TrustRegistriesDTO(
                               items: Seq[TrustRegistryDTO],
@@ -61,3 +62,4 @@ object TrustRegistriesDTO {
   given JsonValueCodec[TrustRegistriesDTO] = JsonCodecMaker.make
 
 }
+

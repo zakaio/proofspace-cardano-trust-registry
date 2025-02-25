@@ -238,17 +238,6 @@ class RegistryCrudAPI(using AppContextProvider[TrustRegistryBackend],
           handleNetworkChoice()
       }
 
-    def verifySignature(bearer: Option[String], signature: Option[String], optServiceDid: Option[String], optNetwork: Option[String]):
-                              Future[Either[HttpExceptionDTO,(String,String)]] = {
-      val proofspaceConfig = AppContext[AppConfig].proofspace
-      val proofspaceNetwork = optNetwork.getOrElse(proofspaceConfig.defaultNetwork)
-      val serviceDid = optServiceDid.getOrElse{
-        proofspaceConfig.networks.get(proofspaceNetwork).flatMap(_.defaultServiceDid).getOrElse(
-          throw HttpException(StatusCode.BadRequest, s"Service DID is not provided for network $proofspaceNetwork")
-        )
-      }
-      Future.successful(Right[HttpExceptionDTO,(String,String)]((serviceDid, proofspaceNetwork)))
-    }
 
     def handleListQuery(query: TrustRegistryQueryDTO, serviceDid: String, proofspaceNetwork: String): Future[Either[HttpExceptionDTO,TrustRegistriesDTO]] = {
       AppContext[TrustRegistryBackend].listRegistries(query, serviceDid, proofspaceNetwork).map(Right(_)).recover {

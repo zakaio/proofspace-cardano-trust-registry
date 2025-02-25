@@ -2,7 +2,7 @@ package proofspace.trustregistry.onchain
 
 import proofspace.trustregistry.model.{TrustRegistryDatum, TrustRegistryOperation}
 import scalus.builtin.ByteString
-import scalus.ledger.api.v3.{Address, ScriptContext, ScriptInfo, TxOut}
+import scalus.ledger.api.v3.{Address, Credential, ScriptContext, ScriptInfo, TxOut}
 import scalus.prelude.{*, given}
 import scalus.prelude.Prelude.{*, given}
 
@@ -22,10 +22,10 @@ object SubmitWithCostMaintainerApprove {
    * @param targetAddr - address of the approved change. Usually it is the address which in in 'SimpleMaintainer' contract.
    * @param ctx - context of the transaction
    */
-  def submittForApproveMintingPolicy(registryName: ByteString, changeCost: BigInt, targetAddr: Address)(ctx: ScriptContext): Unit = {
+  def submittForApproveMintingPolicy(registryName: ByteString, changeCost: BigInt, targetCredential: Credential)(ctx: ScriptContext): Unit = {
         val myOutputs = MintingPolicyElements.filterMintedOutputs(ctx, registryName,
             (txOut, parsedDatum, ops) => {
-              if (txOut.address !== targetAddr) then
+              if (txOut.address.credential !== targetCredential) then
                 throw new Exception("Output address is not the target address")
               operationsWithPayment(txOut, parsedDatum, changeCost)
             })

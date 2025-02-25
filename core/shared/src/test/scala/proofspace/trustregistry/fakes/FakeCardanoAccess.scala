@@ -13,14 +13,29 @@ import cps.monads.{*, given}
 import cps.stream.*
 import proofspace.trustregistry.offchain.*
 import scalus.builtin.ByteString
+import scalus.flat
+import scalus.flat.Flat
+import scalus.uplc.{*, given}
+import scalus.uplc.FlatInstantces.{*,given}
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-class FakeCardanoAccess extends CardanoOfflineAccess {
+class FakeCardanoAccess extends CardanoOffchainAccess {
 
   val transactionsByTime: ArrayBuffer[(TxInfo,PosixTime)] = ArrayBuffer.empty
   val transactionsByAddress: MutableMap[Address, ArrayBuffer[TxInfoAsOfflineAccess]] = MutableMap.empty
   val listeners: ArrayBuffer[(TxInfo, PosixTime) => Unit] = ArrayBuffer.empty
+
+  // incorrect, but tow
+  override def scriptHash(uplc: Term): ByteString =
+    val bitSize = summon[Flat[Term]].bitSize(uplc)
+    val encoderState = new flat.EncoderState(bitSize/8 + 1)
+    scalus.flat.encode(uplc, encoderState)
+    val bytes = encoderState.buffer
+    val retval = scalus.utils.Utils.sha2_256( bytes )
+    scalus.builtin.ByteString.fromArray(retval)
+
+
 
   def putTransaction(tx: TxInfo, time: PosixTime ): Unit = {
     this.synchronized{
@@ -35,7 +50,9 @@ class FakeCardanoAccess extends CardanoOfflineAccess {
     }
   }
 
-  override def iterateTransactionsTo(address: Address, txId: TxId, n: Int): AddressTransactionAccess = {
+
+
+  def iterateTransactionsTo(address: Address, txId: TxId, n: Int): AddressTransactionAccess = {
 
     val txs = transactionsByAddress.getOrElse(address, ArrayBuffer.empty)
     val start = txs.indexWhere(_.id == txId)
@@ -53,7 +70,7 @@ class FakeCardanoAccess extends CardanoOfflineAccess {
       listeners.append {
         (tx: TxInfo, time) => out.emitAsync(TxInfoAsOfflineAccess(tx,time)).onComplete {
           case Success(_) =>
-          case Failure(e) => 
+          case Failure(e) =>
             println(s"error in emitting tx: $e")
             e.printStackTrace()
         }
@@ -64,12 +81,6 @@ class FakeCardanoAccess extends CardanoOfflineAccess {
 
   }
 
-  override def translateAddressToByteString(address: Address): ByteString = ???
 
-  override def translateAddressToBeth32(address: Address): String = ???
-  
-  override def translateBeth32ToAddress(bech32: String): Address = ???
-  
-  override def translateUplcToAddress(uplc: scalus.uplc.Term): Address = ???
 
 }

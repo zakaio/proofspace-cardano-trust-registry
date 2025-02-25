@@ -7,7 +7,8 @@ import proofspace.trustregistry.dto.{NetworkChoiceDTO, NetworkChoiceItemDTO}
 import proofspace.trustregistry.gateways.cardano.CardanoLocalTrustRegistryAdapter
 import proofspace.trustregistry.gateways.local.{BlockChainLocalTrustRegistryAdapter, EmptyBlockchainLocalTrustRegistryAdapter}
 
-class BlockchainAdapterService(using AppContextProvider[AppConfig]) {
+class BlockchainAdapterService(using AppContextProvider[AppConfig],
+                                     AppContextProvider[MongoDBService] ) {
 
   val logger = LoggerFactory.getLogger(classOf[BlockchainAdapterService])
 
@@ -36,7 +37,7 @@ class BlockchainAdapterService(using AppContextProvider[AppConfig]) {
 
 object BlockchainAdapterService {
 
-  given (using AppContextProviders[(AppConfig, AppContext.Cache)]): AppContextProvider[BlockchainAdapterService] =
+  given (using AppContextProviders[(AppConfig, AppContext.Cache, MongoDBService)]): AppContextProvider[BlockchainAdapterService] =
     new AppContextProvider[BlockchainAdapterService] {
       override def get: BlockchainAdapterService =
         AppContext[AppContext.Cache].getOrCreate(new BlockchainAdapterService)

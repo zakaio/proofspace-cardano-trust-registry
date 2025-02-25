@@ -14,7 +14,7 @@ import scalus.uplc.Term
 import scalus.uplc.TermDSL.{*, given}
 
 
-class SubmitWithCostMaintainerApproveGenerator(override val cardanoOfflineAccess: CardanoOfflineAccess) extends ContractGenerator {
+class SubmitWithCostMaintainerApproveGenerator(override val cardanoOfflineAccess: CardanoOffchainAccess) extends ContractGenerator {
 
 
   override def parametersDescription: Seq[ContractParameter] = Seq(
@@ -52,17 +52,14 @@ class SubmitWithCostMaintainerApproveGenerator(override val cardanoOfflineAccess
     import FromDataInstances.given
     val regName = scalus.builtin.ByteString.fromString(name)
     val cost = BigInt(getInteger(contractParameters, COST_IDX))
-    val address: Address = cardanoOfflineAccess.translateUplcToAddress(generateTargetAddressScript(name, contractParameters))
-    val addressCred = address.credential
-    val (addressBytes, isScript) = addressCred match
-      case PubKeyCredential(pkh) => (pkh.hash, false)
-      case ScriptCredential(skh) => (skh, true)
+    val addressCred = cardanoOfflineAccess.translateUplcToScriptCred(generateTargetAddressScript(name, contractParameters))
+    val addressBytes = addressCred.hash
     val mintingPolicyPar = scalus.Compiler.compile(
-      (regName: ByteString, cost: BigInt, credBytes: ByteString, isScript: Boolean) =>
-        val cred = if isScript then new  ScriptCredential(credBytes) else new PubKeyCredential( new PubKeyHash(credBytes))
-        SubmitWithCostMaintainerApprove.submittForApproveMintingPolicy(regName,cost, new Address(cred,Maybe.Nothing))
+      (regName: ByteString, cost: BigInt, credBytes: ByteString) =>
+        val cred = new  ScriptCredential(credBytes)
+        SubmitWithCostMaintainerApprove.submittForApproveMintingPolicy(regName,cost, cred)
           ).toUplc(true)
-    val mintingPolicyFun = mintingPolicyPar $ regName $ cost $ addressBytes $ isScript
+    val mintingPolicyFun = mintingPolicyPar $ regName $ cost $ addressBytes
     mintingPolicyFun
   }
 

@@ -12,12 +12,12 @@ import scalus.uplc.TermDSL.{*, given}
 
 import scala.language.implicitConversions
 
-class SingleMaintainerGenerator(override val cardanoOfflineAccess: CardanoOfflineAccess) extends ContractGenerator {
+class SingleMaintainerGenerator(override val cardanoOfflineAccess: CardanoOffchainAccess) extends ContractGenerator {
 
   val PKH_IDX = 0
 
   override def parametersDescription: Seq[ContractParameter] =
-    Seq(ContractParameter("maintainer", "Maintainer of the trust registry", ContractParameterType.PubKeyHash))
+    SingleMaintainerGenerator.parametersDescription
   
   override def generateTargetAddressScript(name: String, params: Seq[String]): scalus.uplc.Term = {
     val pkhBytes = scalus.builtin.ByteString.fromHex(params(PKH_IDX))
@@ -41,5 +41,12 @@ class SingleMaintainerGenerator(override val cardanoOfflineAccess: CardanoOfflin
 
   override def minChangeCost(contractParameters: Seq[String]): BigInt = BigInt(0)
 
+
+}
+
+object SingleMaintainerGenerator {
+
+  def parametersDescription: Seq[ContractParameter] =
+    Seq(ContractParameter("maintainer", "Maintainer of the trust registry", ContractParameterType.PubKeyHash))
 
 }

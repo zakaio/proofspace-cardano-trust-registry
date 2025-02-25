@@ -38,12 +38,14 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     logger.debug(s"Creating trust registry ${create.name}")
     val (serviceDid, proofspaceNetwork) = AppContext[AppConfig].retrieveProofspaceServiceDidAndNetwork(create.proofspaceServiceDid, create.proofspaceNetwork)
     val blockchainAdapter = AppContext[BlockchainAdapterService].createBlockchainAdapter(create.network, create.subnetwork)
-    val registryId = blockchainAdapter.createTrustRegistry(create, serviceDid, proofspaceNetwork).await
+    val BlockChainLocalTrustRegistryAdapter.CreateResult(registryId, targetAddress) =
+      blockchainAdapter.createTrustRegistry(create, serviceDid, proofspaceNetwork).await
+
     val entry = TrustRegistryEntry(registryId, create.name,
       create.network, create.subnetwork,
       serviceDid, proofspaceNetwork,
       create.schema,
-      create.createTargetAddress,
+      Some(targetAddress),
       Seq.empty)
     val collection = await(retrieveCollection)
     val insertResult = await(collection.insert.one(entry))
@@ -54,7 +56,7 @@ class MongoDBTrustRegistryBackend(using AppContextProvider[MongoDBService], AppC
     // TODO: receive through the blockchain adapter.
     val now = LocalDateTime.now()
     TrustRegistryDTO(registryId, create.name, create.network, serviceDid, proofspaceNetwork, create.subnetwork,
-      create.createTargetAddress,
+      Some(targetAddress),
       now,
       create.schema
     )

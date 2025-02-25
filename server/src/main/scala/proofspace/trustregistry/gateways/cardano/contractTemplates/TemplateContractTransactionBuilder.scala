@@ -3,7 +3,7 @@ package proofspace.trustregistry.gateways.cardano.contractTemplates
 import com.bloxbean.cardano.client.account.Account
 import com.bloxbean.cardano.client.address.AddressProvider
 import com.bloxbean.cardano.client.api.helper.TransactionBuilder
-import com.bloxbean.cardano.client.api.model.Amount
+import com.bloxbean.cardano.client.api.model.{Amount, Utxo}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -36,14 +36,16 @@ import scalus.builtin.Data.ToData
 import java.math.BigInteger
 import scala.jdk.CollectionConverters.*
 
-class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService: BFBackendService, senderAddress: String, signerKeys: Map[String,CardanoKeyConfig]) extends ContractTransactionBuilder {
+class TemplateContractTransactionBuilder(contract: CardanoContractDTO,
+                                         generator: ContractGenerator,
+                                         bfService: BFBackendService,
+                                         senderAddress: String,
+                                         signerKeys: Map[String,CardanoKeyConfig]) extends ContractTransactionBuilder(bfService, senderAddress, signerKeys) {
+  
 
-
-
-
-  def buildCreateTransaction(name: String, snetwork: String, contract: CardanoContractDTO): Future[String] = {
+  def buildCreateTransaction(name: String, snetwork: String): Future[String] = {
       val network = asNetwork(snetwork)
-      val (targetAddress, targetScript) = targetAddressAndScript(name, contract, network)
+      val (targetAddress, targetScript) = targetAddressAndScript(name, network)
       
       
       val submitMintingPolicy = generator.generateSubmitMintingPolicy(name, contract.parameters).plutusV3
@@ -59,7 +61,7 @@ class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService
       )
 
       val retval = sendTransactionWithMintingPolicyAndAda(
-        mintingPolicyScript,
+        mintingPolicyScript.plutusScript,
         name,
         targetAddress,
         targetScript,
@@ -71,9 +73,9 @@ class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService
       Future.successful(retval)
   }
 
-  override def buildSubmitChangeTransaction(name: String, snetwork: String, contract: CardanoContractDTO, change: TrustRegistryChangeDTO): Future[String] = {
+  override def buildSubmitChangeTransaction(name: String, snetwork: String, change: TrustRegistryChangeDTO): Future[String] = {
       val network = asNetwork(snetwork)
-      val (targetAddress, targetScript) = targetAddressAndScript(name, contract, network)
+      val (targetAddress, targetScript) = targetAddressAndScript(name, network)
       val submitMintingPolicy = generator.generateSubmitMintingPolicy(name, contract.parameters).plutusV3
       val operations = changeToOperations(change)
       if (scalus.prelude.List.isEmpty(operations)) {
@@ -82,7 +84,7 @@ class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService
       val datum = TrustRegistryDatum.Operations(operations)
       val mintingPolicyScript = new MintingPolicyScript(submitMintingPolicy)
       val retval = sendTransactionWithMintingPolicyAndAda(
-        mintingPolicyScript,
+        mintingPolicyScript.plutusScript,
         name,
         targetAddress,
         targetScript,
@@ -93,13 +95,16 @@ class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService
       Future.successful(retval)
   }
 
-  override def hasAppoveAndRejectTransactions(contract: CardanoContractDTO): Boolean =
+  override def hasAppoveAndRejectTransactions: Boolean =
     generator.hasApprovalProcess
 
 
-  override def buildApproveTransaction(name: String, snetwork: String, contract: CardanoContractDTO, submitTransactionId: String): Future[String] = {
+  override def buildApproveTransaction(name: String, snetwork: String, submitTransactionId: String): Future[String] = {
+    if (!generator.hasApprovalProcess) {
+      throw IllegalArgumentException("Approval process is not supported by the contract")
+    }
     val network = asNetwork(snetwork)
-    val (targetAddress, targetScript) = targetAddressAndScript(name, contract, network)
+    val (targetAddress, targetScript) = targetAddressAndScript(name, network)
     val approveMintingPolicy = generator.generateTargetMintingPolicy(name, contract.parameters).plutusV3
     val mintingPolicyScript = new MintingPolicyScript(approveMintingPolicy)
     val submitMintintPolicy = generator.generateSubmitMintingPolicy(name, contract.parameters).plutusV3
@@ -110,32 +115,8 @@ class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService
       throw IllegalArgumentException(s"Transaction $submitTransactionId not found: ${retrieveSubmitTransactionResult.getResponse}")
     val submitTransaction: TransactionContent = retrieveSubmitTransactionResult.getValue
 
-    // TODO: check,  is it correct?  Maybe we need name to be in hex ?
-    val submitAssetUnit = submitMintingPolicyScript.scriptHash.toHex + name
+    val utxo = findOutputWithMintingPolicy(submitTransaction, submitMintingPolicyScript.plutusScript, name)
 
-    val outputAmounts = submitTransaction.getOutputAmount.asScala
-    val existsOutAmount = outputAmounts.exists(_.getUnit == submitAssetUnit)
-    if (!existsOutAmount) then
-      throw IllegalArgumentException(s"Output with asset $submitAssetUnit not found in transaction $submitTransactionId")
-
-    val utxosCount = submitTransaction.getUtxoCount
-    // now search for utxos
-    val utxos = (0 until utxosCount).flatMap { utxoIndex =>
-      val r = bfService.getUtxoService.getTxOutput(submitTransactionId, utxoIndex)
-      if (!r.isSuccessful) then
-        throw IllegalArgumentException(s"Error fetching utxo $utxoIndex for transaction $submitTransactionId: ${r.getResponse}")
-      val utxo = r.getValue
-      val amounts = utxo.getAmount.asScala
-      amounts.find(_.getUnit == submitAssetUnit ).map(_ => utxo)
-    }
-
-    if (utxos.isEmpty) then
-      throw IllegalArgumentException(s"Utxo with asset $submitAssetUnit not found in transaction $submitTransactionId")
-
-    if (utxos.size > 1) then
-      throw IllegalArgumentException(s"Multiple utxos with asset $submitAssetUnit found in transaction $submitTransactionId")
-
-    val utxo = utxos.head
     val tx1 = ScriptTx().collectFrom(utxo)
       .payToContract(targetAddress, utxo.getAmount, PlutusData.unit(), targetScript)
       .mintAsset(mintingPolicyScript.plutusScript, List(Asset(name, BigInteger.valueOf(1))).asJava, PlutusData.unit(), targetAddress, PlutusData.unit())
@@ -146,28 +127,49 @@ class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService
       .withSigner(txSigner)
       .buildAndSign()
 
-    ???
-
-
+    val transactionId = sendTransaction(tx)
+    Future.successful(transactionId)
   }
 
+  override def buildRejectTransaction(name: String, snetwork: String,  submitTransactionId: String): Future[String] = {
+    if (!generator.hasApprovalProcess) {
+      throw IllegalArgumentException("Approval process is not supported by the contract")
+    }
+    val network = asNetwork(snetwork)
+    val (targetAddress, targetScript) = targetAddressAndScript(name, network)
+    val submitMintingPolicy = generator.generateSubmitMintingPolicy(name, contract.parameters).plutusV3
+    val submitMintingPolicyScript = new MintingPolicyScript(submitMintingPolicy)
+    val txSigner = createTxSigner(snetwork)
+    val retrieveSubmitTransactionResult = bfService.getTransactionService.getTransaction(submitTransactionId)
+    if (! retrieveSubmitTransactionResult.isSuccessful) then
+      throw IllegalArgumentException(s"Transaction $submitTransactionId not found: ${retrieveSubmitTransactionResult.getResponse}")
+    val submitTransaction: TransactionContent = retrieveSubmitTransactionResult.getValue
 
-  override def buildRejectTransaction(name: String, snetwork: String, contract: CardanoContractDTO,  submitTransactionId: String): Future[String] = ???
+    val utxo = findOutputWithMintingPolicy(submitTransaction, submitMintingPolicyScript.plutusScript, name)
 
-  override def hasVoteTransaction(contract: CardanoContractDTO): Boolean = false
+    val submitAssetUnit = submitMintingPolicyScript.scriptHash.toHex + name
+    val utxoAsset = utxo.getAmount.asScala.find(_.getUnit == submitAssetUnit) match
+      case Some(asset) => asset
+      case None => throw IllegalArgumentException(s"Asset $submitAssetUnit not found in utxo from ${utxo.getTxHash}")
 
-  override def buildVoteTransaction(name: String, snetwork: String, contract: CardanoContractDTO, submitTransactionId: String, approve: Boolean): Future[String] = ???
+    val tx1 = ScriptTx().collectFrom(utxo)
+      .mintAsset(submitMintingPolicyScript.plutusScript,
+        List(Asset(submitAssetUnit, utxoAsset.getQuantity.negate())).asJava,
+        PlutusData.unit(), targetAddress, PlutusData.unit())
+    val tx = QuickTxBuilder(bfService).compose(tx1)
+      .mergeOutputs(true)
+      .withSigner(txSigner)
+      .buildAndSign()
 
-  def asNetwork(snetwork: String): Network = {
-    snetwork match
-      case "mainnet" => Networks.mainnet()
-      case "testnet" => Networks.testnet()
-      case "preprod" => Networks.preprod()
-      case "preview" => Networks.preview()
-      case _ => throw IllegalArgumentException(s"Invalid network $snetwork")
+    val transactionId = sendTransaction(tx)
+    Future successful transactionId
   }
 
-  def targetAddressAndScript(name: String, contract: CardanoContractDTO, network: Network): (String, Script) = {
+  override def hasVoteTransaction: Boolean = false
+
+  override def buildVoteTransaction(name: String, snetwork: String, submitTransactionId: String, approve: Boolean): Future[String] = ???
+  
+  def targetAddressAndScript(name: String, network: Network): (String, Script) = {
     val targetScalusScript = generator.generateTargetAddressScript(name, contract.parameters)
     val targetCborHex = targetScalusScript.plutusV3.doubleCborHex
     val script = PlutusV3Script.builder().cborHex(targetCborHex).build()
@@ -175,64 +177,15 @@ class TemplateContractTransactionBuilder(generator: ContractGenerator, bfService
     (address.toBech32, script)
   }
 
-  def changeToOperations(change: TrustRegistryChangeDTO): scalus.prelude.List[TrustRegistryOperation] = {
-    val addedDids = scalus.prelude.List.from(change.addedDids.map(did => ByteString.fromString(did)))
-    val removedDids = scalus.prelude.List.from(change.removedDids.map(did => ByteString.fromString(did)))
-    if (scalus.prelude.List.isEmpty(addedDids) && scalus.prelude.List.isEmpty(removedDids)) {
-      scalus.prelude.List.empty
-    } else if (scalus.prelude.List.isEmpty(addedDids)) {
-      scalus.prelude.List.single(TrustRegistryOperation.RemoveDids(removedDids))
-    } else if (scalus.prelude.List.isEmpty(removedDids)) {
-      scalus.prelude.List.single(TrustRegistryOperation.AddDids(addedDids))
-    } else {
-      scalus.prelude.List.from(Seq(
-        TrustRegistryOperation.AddDids(addedDids),
-        TrustRegistryOperation.RemoveDids(removedDids)
-      ))
-    }
+  override def buildTargetAddress(name: String, snetwork: String): Future[String] = {
+    val tas = targetAddressAndScript(name, asNetwork(snetwork))
+    Future.successful(tas._1)
   }
 
-  def createTxSigner(snetwork: String): TxSigner = {
-    val singerMnemonic = signerKeys.get(snetwork) match
-      case Some(keyConfig) => keyConfig.seedPhrase.getOrElse(
-        throw IllegalArgumentException(s"Seed phrase not found for network $snetwork")
-      )
-      case None => throw IllegalArgumentException(s"Signer key not found for network $snetwork")
-    val network = asNetwork(snetwork)
-    val signerAccount = new Account(network, singerMnemonic)
-    val signer = SignerProviders.signerFrom(signerAccount)
-    signer
-  }
 
-  def sendTransactionWithMintingPolicyAndAda(mintingPolicyScript: MintingPolicyScript,
-                                             assetName: String,
-                                             targetAddress: String,
-                                             targetScript: Script,
-                                             adaAmountToSend: BigInteger,
-                                             datum: TrustRegistryDatum,
-                                             signer: TxSigner): String = {
-    val datumScalusData = summon[ToData[TrustRegistryDatum]](datum)
-    val tx1 = ScriptTx()
-      .mintAsset(mintingPolicyScript.plutusScript,
-        List(Asset(assetName,BigInteger.valueOf(1))).asJava,
-        PlutusData.unit(),
-        targetAddress,
-        Interop.toPlutusData(datumScalusData)
-      )
-      .payToContract(targetAddress, Amount.lovelace(adaAmountToSend), PlutusData.unit(), targetScript)
-    val tx2 = Tx().from(senderAddress)
-    val tx = QuickTxBuilder(bfService).compose(tx1, tx2)
-      .mergeOutputs(true)
-      .withSigner(signer)
-      .buildAndSign()
+}
 
-    val transactionService = bfService.getTransactionService
-    val result = transactionService.submitTransaction(tx.serialize())
-    if (!result.isSuccessful) {
-      throw new IllegalStateException(s"Transaction submission failed: ${result.getResponse}")
-    }
-    val transactionId = result.getValue
-    transactionId
-  }
-
+object TemplateContractTransactionBuilder {
+  def apply(contract: CardanoContractDTO, generator: ContractGenerator, bfService: BFBackendService, senderAddress: String, signerKeys: Map[String,CardanoKeyConfig]): TemplateContractTransactionBuilder =
+    new TemplateContractTransactionBuilder(contract, generator, bfService, senderAddress, signerKeys)
 }

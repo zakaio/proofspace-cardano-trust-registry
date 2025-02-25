@@ -6,9 +6,10 @@ import scala.concurrent.Future
 
 class EmptyBlockchainLocalTrustRegistryAdapter extends BlockChainLocalTrustRegistryAdapter {
 
-  override def createTrustRegistry(createTrustRegistryDTO: CreateTrustRegistryDTO, serviceDid: String, proofspaceNetwork:String): Future[String] = {
+  override def createTrustRegistry(createTrustRegistryDTO: CreateTrustRegistryDTO, serviceDid: String, proofspaceNetwork:String): Future[BlockChainLocalTrustRegistryAdapter.CreateResult] = {
     val registryId = s"${createTrustRegistryDTO.network}:${createTrustRegistryDTO.name}"
-    Future.successful(registryId)
+    val retval = BlockChainLocalTrustRegistryAdapter.CreateResult(registryId, registryId)
+    Future.successful(retval)
   }
 
   override def createTrustRegistryChangeRequest(trustRegistryChangeDTO: TrustRegistryChangeDTO, serviceDid: String, proofspaceNetwork: String): Future[String] = {
