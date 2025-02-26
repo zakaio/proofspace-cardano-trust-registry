@@ -54,6 +54,22 @@ export class RegistryApi extends ListItemApi<Registry, RegistryApiObject> {
     return await httpGetJSON(`${appConfig().BACKEND}/network-choice`);
   }
 
+  async getCardanoTemplates() {
+    return await httpGetJSON(`${appConfig().BACKEND}/cardano/script/templates`);
+  }
+
+  async generateCardanoAddressFromTemplate(subnetwork: string, registry: string, template: string, parameters: string[]) {
+    const data: any = {
+      subnetwork,
+      contract: {
+        registryName: registry,
+        templateName: template,
+        parameters
+      }
+    };
+    return await httpPostJSON(`${appConfig().BACKEND}/cardano/script/from-template`, data);
+  }
+
   protected async fetchOne(condition?: GetCondition): Promise<RegistryApiObject> {
     const id = condition && condition.identity ? condition.identity : '';
     return await httpGetJSON(`${appConfig().BACKEND}/trust-registry/${encodeURI(id as string)}`);
