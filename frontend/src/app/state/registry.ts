@@ -1,7 +1,7 @@
 import {createAsyncThunk, createSlice, PayloadAction} from "@reduxjs/toolkit";
 import {ItemsState} from "./base";
 import {entriesApi, registryApi} from "../api/API";
-import {Network, Registry} from "../../domain/Registry";
+import {CardanoTemplate, Network, Registry} from "../../domain/Registry";
 
 let itemsPerPage = 9;
 let currentPage = 1;
@@ -9,10 +9,12 @@ let filter = '';
 
 interface RegistryState extends ItemsState<Registry>{
   networks: Network[];
+  cardanoTemplates: CardanoTemplate[];
 }
 
 const initialState: RegistryState = {
   networks: [],
+  cardanoTemplates: [],
   items: [],
   itemsTotal: 0,
   currentPage: 1,
@@ -37,11 +39,15 @@ export const registrySlice = createSlice({
     },
     setNetworks: (state, action: PayloadAction<Network[]>) => {
       state.networks = action.payload;
+    },
+    setCardanoTemplates: (state, action: PayloadAction<CardanoTemplate[]>) => {
+      state.cardanoTemplates = action.payload;
     }
   }
 });
 
-const {setLoading, setRegistries, setNetworks} = registrySlice.actions;
+const {setLoading, setRegistries,
+  setNetworks, setCardanoTemplates} = registrySlice.actions;
 
 export const getRegistries = createAsyncThunk(
   'get-registries',
@@ -50,6 +56,8 @@ export const getRegistries = createAsyncThunk(
 
     const netResp = await registryApi.getNetworks();
     dispatch(setNetworks(netResp.items || []));
+    const tpls = await registryApi.getCardanoTemplates();
+    dispatch(setCardanoTemplates(tpls));
 
     currentPage = arg.currentPage;
     itemsPerPage = arg.itemsPerPage;
