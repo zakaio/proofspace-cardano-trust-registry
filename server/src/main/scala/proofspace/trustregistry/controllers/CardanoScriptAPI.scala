@@ -132,20 +132,32 @@ class CardanoScriptAPI(using AppContextProvider[ScriptRepository],
       val bfBackend = blockFrostSessions.createBFService(serviceDid, dto.subnetwork, proofspaceNetwork)
       val cardanoOffchainAccess = BFCardanoOffchainAccess(bfBackend)
       val generator = generatorFactory(cardanoOffchainAccess)
-      val targetAddressScript = 
-        try 
+      val targetAddressScript =
+        try
           generator.generateTargetAddressScript(dto.contract.registryName, dto.contract.parameters)
         catch
           case NonFatal(ex) =>
+            logger.warn(s"Failed to generate target address script: ${ex.getMessage}", ex)
             throw HttpException(StatusCode.BadRequest, s"Failed to generate target address script: ${ex.getMessage}")
       val targetCborHex = targetAddressScript.plutusV3.doubleCborHex
       val targetPlutusScript = PlutusV3Script.builder().cborHex(targetCborHex).build()
       val targetScriptHash = Hex.bytesToHex(targetPlutusScript.getScriptHash)
       saveIfNeeded(targetScriptHash, targetCborHex, s"target${dto.contract.registryName}").await
-      val network = CardanoHelper.asNetwork(dto.subnetwork)
+      val network = try
+        CardanoHelper.asNetwork(dto.subnetwork)
+      catch
+        case NonFatal(ex) =>
+          logger.warn(s"Failed to parse network: ${ex.getMessage}", ex)
+          throw HttpException(StatusCode.BadRequest, s"Invalid cardano networkd ${dto.subnetwork}: ${ex.getMessage}")
       val targetAddress = AddressProvider.getEntAddress(targetPlutusScript, network)
       val targetSubmitPolicy: Option[String] = if (generator.hasApprovalProcess) then {
-        val submitPolicy = generator.generateSubmitMintingPolicy(dto.contract.registryName, dto.contract.parameters)
+        val submitPolicy =
+          try
+            generator.generateSubmitMintingPolicy(dto.contract.registryName, dto.contract.parameters)
+          catch
+            case NonFatal(ex) =>
+              logger.warn(s"Failed to generate submit minting policy: ${ex.getMessage}", ex)
+              throw HttpException(StatusCode.BadRequest, s"Failed to generate submit minting policy: ${ex.getMessage}")
         val submitCborHex = submitPolicy.plutusV3.doubleCborHex
         val submitPlutusScript = PlutusV3Script.builder().cborHex(submitCborHex).build()
         val submitHash = Hex.bytesToHex(submitPlutusScript.getScriptHash)
@@ -154,14 +166,25 @@ class CardanoScriptAPI(using AppContextProvider[ScriptRepository],
       } else
         None
       val changeCost = generator.minChangeCost(dto.contract.parameters)
-      val targetMintingPilict = generator.generateTargetMintingPolicy(dto.contract.registryName, dto.contract.parameters)
+      val targetMintingPilict =
+        try
+          generator.generateTargetMintingPolicy(dto.contract.registryName, dto.contract.parameters)
+        catch
+          case NonFatal(ex) =>
+            logger.warn(s"Failed to generate target minting policy: ${ex.getMessage}", ex)
+            throw HttpException(StatusCode.BadRequest, s"Failed to generate target minting policy: ${ex.getMessage}")
       val targetMintingCborHex = targetMintingPilict.plutusV3.doubleCborHex
       val targetMintingPlutusScript = PlutusV3Script.builder().cborHex(targetMintingCborHex).build()
       val targetMintingHash = Hex.bytesToHex(targetMintingPlutusScript.getScriptHash)
       saveIfNeeded(targetMintingHash, targetMintingCborHex, s"minting${dto.contract.registryName}").await
 
-      val votingTokens = generator.votingTokens(dto.contract.parameters)
-
+      val votingTokens =
+        try
+          generator.votingTokens(dto.contract.parameters)
+        catch
+          case NonFatal(ex) =>
+            logger.warn(s"Failed to generate voting tokens: ${ex.getMessage}", ex)
+            throw HttpException(StatusCode.BadRequest, s"Failed to generate voting tokens: ${ex.getMessage}")
 
       CardanoGenericContractDTO(
         targetAddress = targetAddress.toBech32,
