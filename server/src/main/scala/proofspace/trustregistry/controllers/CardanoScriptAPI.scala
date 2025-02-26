@@ -21,6 +21,8 @@ import proofspace.trustregistry.gateways.cardano.{BFCardanoOffchainAccess, Block
 import proofspace.trustregistry.services.MongoDBService
 import scalus.*
 
+import scala.util.control.NonFatal
+
 
 class CardanoScriptAPI(using AppContextProvider[ScriptRepository],
                          AppContextProvider[AppConfig],
@@ -130,7 +132,12 @@ class CardanoScriptAPI(using AppContextProvider[ScriptRepository],
       val bfBackend = blockFrostSessions.createBFService(serviceDid, dto.subnetwork, proofspaceNetwork)
       val cardanoOffchainAccess = BFCardanoOffchainAccess(bfBackend)
       val generator = generatorFactory(cardanoOffchainAccess)
-      val targetAddressScript = generator.generateTargetAddressScript(dto.contract.registryName, dto.contract.parameters)
+      val targetAddressScript = 
+        try 
+          generator.generateTargetAddressScript(dto.contract.registryName, dto.contract.parameters)
+        catch
+          case NonFatal(ex) =>
+            throw HttpException(StatusCode.BadRequest, s"Failed to generate target address script: ${ex.getMessage}")
       val targetCborHex = targetAddressScript.plutusV3.doubleCborHex
       val targetPlutusScript = PlutusV3Script.builder().cborHex(targetCborHex).build()
       val targetScriptHash = Hex.bytesToHex(targetPlutusScript.getScriptHash)

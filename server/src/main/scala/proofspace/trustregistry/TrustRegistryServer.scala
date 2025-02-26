@@ -14,7 +14,7 @@ import sttp.tapir.*
 import sttp.tapir.server.pekkohttp.{PekkoHttpServerInterpreter, PekkoHttpServerOptions}
 import sttp.tapir.server.interceptor.cors.{CORSConfig, CORSInterceptor}
 import sttp.model.Method
-import proofspace.trustregistry.controllers.RegistryCrudAPI
+import proofspace.trustregistry.controllers.{CardanoScriptAPI, RegistryCrudAPI}
 import proofspace.trustregistry.gateways.TrustRegistryBackend
 import proofspace.trustregistry.gateways.local.MongoDBTrustRegistryBackend
 import proofspace.trustregistry.services.*
@@ -56,8 +56,9 @@ class TrustRegistryServer {
     given ActorSystem = ActorSystem()
 
 
-    val controller = new RegistryCrudAPI();
-    val endpoints = controller.endpoints
+    val registryCrudAPI = new RegistryCrudAPI()
+    val cardanoScriptApi = new CardanoScriptAPI()
+    val endpoints = registryCrudAPI.endpoints ++ cardanoScriptApi.endpoints
 
     val swaggerEndpoints = SwaggerInterpreter().fromEndpoints[Future](endpoints.map(_.endpoint), "ProofSpace TrustRegstryServer", "0.0.1")
 
