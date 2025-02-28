@@ -40,7 +40,7 @@ export interface Registry extends Identity<string> {
   schema: string;
   network: string;
   subnetwork?: string;
-  didPrefix: string;
+  didPrefix?: string;
   proofspaceServiceDid?: string;
   proofspaceNetwork?: string;
   cardano?: Cardano;

@@ -11,7 +11,7 @@ interface RegistryApiObject {
   schema: string;
   network: string;
   subnetwork?: string;
-  didPrefix: string;
+  didPrefix?: string;
   proofspaceServiceDid?: string;
   proofspaceNetwork?: string;
   createTargetAddress?: string;
