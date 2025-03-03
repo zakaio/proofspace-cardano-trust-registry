@@ -243,7 +243,7 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
   }, [item, networks]);
 
   const submit = () => {
-    const result: Registry = {identity: item ? item.identity : '', name, schema, network, subnetwork, didPrefix};
+    const result: Registry = {identity: item ? item.identity : '', name, schema, network, subnetwork/*, didPrefix*/};
     if (network === 'cardano') {
       result.cardano = {
         contract: {
@@ -351,6 +351,7 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
               </div>
             </AlignedHGroup>
           )}
+          {/*}
           <AlignedHGroup style={{paddingTop: 32}}>
             <div style={{width: 155, color: '#8E8E8E'}}>{localize('DID_PREFIX')}</div>
             <div style={{width: 315}}>
@@ -365,6 +366,7 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
               />
             </div>
           </AlignedHGroup>
+          {*/}
           {/*}
           <AlignedHGroup style={{paddingTop: 32}}>
             <div style={{width: 155, color: '#8E8E8E'}}>{localize('PROOFSPACE_SERVICE_DID')}</div>
@@ -492,7 +494,7 @@ const EditRegistryPopUp: FC<Props> = ({item, open, onSave, onCancel}) => {
         <Button
           variant={'contained'}
           onClick={submit}
-          disabled={!name || !didPrefix || (network === 'cardano' && !addressGenerated)}
+          disabled={!name || (network === 'cardano' && !addressGenerated)}
         >
           {localize('SUBMIT')}
         </Button>
