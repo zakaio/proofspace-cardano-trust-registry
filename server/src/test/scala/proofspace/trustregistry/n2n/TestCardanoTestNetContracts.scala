@@ -123,4 +123,32 @@ class TestCardanoTestNetContracts extends munit.FunSuite with TestContainerForAl
     f
   }
 
+  test("create AnySubmitMaintainerApproveContract") {
+    val keyname = "test1_maintainer"
+    val keys = getOrGenerateKey(keyname)
+    val verificationKey = keys.getVkey
+    val pkh = KeyGenUtil.getKeyHash(verificationKey)
+    val f = async[Future] {
+      val appConfig = await(serverFixture())
+      val sttpBackend = sttpBackendFixture()
+      val createTrustRegistryRequest = sttp.client3.basicRequest
+        .post(uri"http://localhost:${appConfig.port}/cardano/script/from-template")
+        .body(
+          CardanoContractGenerateDTO(
+            subnetwork = "testnet",
+            contract = CardanoContractDTO(
+              registryName = "cardano-maintainer-approve-t1",
+              templateName = "submitWithCostMaintainerApprove",
+              parameters = Seq(pkh,"1000000")
+            )
+          )
+        )
+      val response = await(sttpBackend.send(createTrustRegistryRequest))
+      println(s"response=${response}")
+      assert(response.code.isSuccess)
+    }
+    f
+
+  }
+
 }
