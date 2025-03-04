@@ -14,8 +14,8 @@ val commonSettings = Seq(
 
 val scalusSettings = Seq(
   autoCompilerPlugins := true,
-  addCompilerPlugin("org.scalus" %% "scalus-plugin" % "0.8.4"),
-  libraryDependencies += "org.scalus" %%% "scalus" % "0.8.4"
+  addCompilerPlugin("org.scalus" %% "scalus-plugin" % "0.8.5"),
+  libraryDependencies += "org.scalus" %%% "scalus" % "0.8.5"
 )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)

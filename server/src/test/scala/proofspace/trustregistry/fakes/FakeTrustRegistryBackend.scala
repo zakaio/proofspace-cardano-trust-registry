@@ -45,7 +45,7 @@ class FakeTrustRegistryBackend(using AppContextProvider[AppConfig]) extends Trus
       case Some(_) => throw new Exception(s"Registry with name ${create.name} already exists")
       case None =>
         val registry = new FakeTrustRegistryBackend.InMemoryTrustRegistry
-        registries.put(name, registry)
+        val unused = registries.put(name, registry)
         val now = LocalDateTime.now()
         Future.successful(TrustRegistryDTO(create.name, create.name, create.network, serviceDid, proofspaceNetwork, None, None, now, None))
   }
@@ -140,7 +140,7 @@ object FakeTrustRegistryBackend {
 
     def applyEntry(change: TrustRegistryChangeDTO): Future[Unit] = {
       val nChangeId = change.changeId.getOrElse(UUID.randomUUID().toString)
-      changes.put(nChangeId, change)
+      val unused = changes.put(nChangeId, change)
       for(did <- change.addedDids) {
         entries.get(did) match
           case Some(entry) =>

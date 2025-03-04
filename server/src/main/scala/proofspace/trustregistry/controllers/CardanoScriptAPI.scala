@@ -78,9 +78,12 @@ class CardanoScriptAPI(using AppContextProvider[ScriptRepository],
         verifySignature(optBearer, optSignature, optServiceDid, optNetwork)
     }
     .serverLogic { case (serviceDid, network) => (dto) =>
-      logger.info(s"Uploading script from dto: $dto")
+      logger.info(s"Scriot from template: $dto")
+      logger.error(s"ddddd")
+      println("Script from template: println $dto")
       handleGenerateFromTemplate(dto, serviceDid, network).map(Right(_)).recover{
-        case ex:HttpException => Left(ex.toDTO)
+        case ex:HttpException =>
+          Left(ex.toDTO)
       }
     }
 

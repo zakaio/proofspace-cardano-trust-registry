@@ -1,13 +1,13 @@
 package proofspace.trustregistry.model
 
-import scalus.builtin.{List => _, *}
+
+import scalus.builtin.{List as _, *}
 import scalus.builtin.Data.{FromData, ToData}
 import scalus.builtin.ToDataInstances.given
 import scalus.builtin.FromDataInstances.given
 import scalus.ledger.api.v3.{*, given}
 import scalus.ledger.api.v3.ToDataInstances.given
 import scalus.ledger.api.v3.FromDataInstances.given
-
 import proofspace.trustregistry.common.*
 
 /**
@@ -118,8 +118,17 @@ object TrustRegistryOperation {
         Builtins.constrData(2, scalus.builtin.List(dn))
   }
 
-  given FromData[TrustRegistryOperation] = FromData.deriveCaseClass[TrustRegistryOperation]
+  //given FromData[TrustRegistryOperation] = FromData.deriveCaseClass[TrustRegistryOperation]
 
+  given FromData[TrustRegistryOperation] = d =>
+    val t = Builtins.unConstrData(d)
+    if (t.fst == BigInt(0)) then
+      new TrustRegistryOperation.AddDids(PreludeListData.listFromData(t.snd.head))
+    else if (t.fst == BigInt(1)) then
+      new TrustRegistryOperation.RemoveDids(PreludeListData.listFromData(t.snd.head))
+    else
+      new TrustRegistryOperation.SetName(Builtins.unBData(t.snd.head))
+      
   
   given listOperationsToData: ToData[scalus.prelude.List[TrustRegistryOperation]] = (ops: scalus.prelude.List[TrustRegistryOperation]) => {
     PreludeListData.listToData(ops)
@@ -154,8 +163,15 @@ object TrustRegistryDatum {
 
   }
 
-  given FromData[TrustRegistryDatum] = FromData.deriveCaseClass[TrustRegistryDatum]
 
+  given FromData[TrustRegistryDatum] = d =>
+    val t = Builtins.unConstrData(d)
+    if (t.fst == BigInt(0)) then
+      new TrustRegistryDatum.Operations(TrustRegistryOperation.listOperationsFromData(t.snd.head))
+    else if (t.fst == BigInt(1)) then
+      new TrustRegistryDatum.SeeReferenceIndex(Builtins.unIData(t.snd.head))
+    else
+      new TrustRegistryDatum.SeeNormalInput(Builtins.unIData(t.snd.head))
 
 }
 
