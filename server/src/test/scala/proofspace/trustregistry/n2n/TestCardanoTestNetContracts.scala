@@ -40,7 +40,7 @@ class TestCardanoTestNetContracts extends munit.FunSuite with TestContainerForAl
     writeToFile(s"src/test/resources/${keyname}.vkey", HexUtil.encodeHexString(verificaionKey.getBytes))
     writeToFile(s"src/test/resources/${keyname}.skey", HexUtil.encodeHexString(secretKey.getBytes))
     val pkh = KeyGenUtil.getKeyHash(verificaionKey)
-    writeToFile(s"src/test/resources/${keyname}.pkh", HexUtil.encodeHexString(pkh.getBytes))
+    writeToFile(s"src/test/resources/${keyname}.pkh", pkh)
     //val address = AddressProvider.getEntAddress(pkh, Networks.testnet)
     //writeToFile(s"src/test/resources/${keyname}.address", address.toBech32)
   }
@@ -108,7 +108,7 @@ class TestCardanoTestNetContracts extends munit.FunSuite with TestContainerForAl
         .post(uri"http://localhost:${appConfig.port}/cardano/script/from-template")
         .body(
           CardanoContractGenerateDTO(
-            subnetwork = "testnet", 
+            subnetwork = "testnet",
             contract = CardanoContractDTO(
               registryName = "cardano-single-maintainer-t1",
               templateName = "singleRegistryMaintainer",
