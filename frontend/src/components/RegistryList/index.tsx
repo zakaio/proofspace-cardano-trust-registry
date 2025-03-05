@@ -76,7 +76,7 @@ const RegistryList: FC<{}> = () => {
     {id: "schema", label: localize('SCHEMA')},
     {id: "network", label: localize('NETWORK')},
     {id: "subnetwork", label: localize('SUB_NETWORK')},
-    {id: "didPrefix", label: localize('DID_PREFIX')},
+    // {id: "didPrefix", label: localize('DID_PREFIX')},
     /*{
       id: "identity",
       label: '',
