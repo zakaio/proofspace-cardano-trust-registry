@@ -49,7 +49,8 @@ object CardanoCreateParams {
   case class Template(contract: CardanoContractDTO) extends CardanoCreateParams
 
   given JsonValueCodec[CardanoCreateParams] = JsonCodecMaker.make
-
+  
+  
 }
 
 case class TrustRegistriesDTO(

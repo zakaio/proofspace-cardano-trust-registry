@@ -21,7 +21,7 @@ import proofspace.trustregistry.model.*
 import proofspace.trustregistry.dto.{CardanoContractDTO, TrustRegistryChangeDTO}
 import proofspace.trustregistry.*
 import proofspace.trustregistry.gateways.cardano.CardanoHelper
-import scalus.bloxbean.Interop
+import scalus.bloxbean.{Interop, ScalusTransactionEvaluator}
 import scalus.prelude.{List as _, *}
 import scalus.prelude.Prelude.*
 import scalus.builtin.Data.ToData
@@ -66,6 +66,9 @@ abstract class ContractTransactionBuilder(bfService: BFBackendService,senderAddr
                                               adaAmountToSend: BigInteger,
                                               datum: TrustRegistryDatum,
                                               signer: TxSigner): String = {
+    require(senderAddress != null)
+    val utxoSupplier = new DefaultUtxoSupplier(bfService.getUtxoService)
+    val protocolParams = bfService.getEpochService.getProtocolParameters().getValue
     val datumScalusData = summon[ToData[TrustRegistryDatum]](datum)
     val tx1 = ScriptTx()
       .mintAsset(mintingPolicyScript,
@@ -75,10 +78,14 @@ abstract class ContractTransactionBuilder(bfService: BFBackendService,senderAddr
         Interop.toPlutusData(datumScalusData)
       )
       .payToContract(targetAddress, Amount.lovelace(adaAmountToSend), PlutusData.unit(), targetScript)
-    val tx2 = Tx().from(senderAddress)
-    val tx = QuickTxBuilder(bfService).compose(tx1, tx2)
+    //val tx2 = Tx().from(senderAddress)
+    val tx = QuickTxBuilder(bfService)
+      .compose(tx1)
+      .feePayer(senderAddress)
       .mergeOutputs(true)
       .withSigner(signer)
+      .withTxEvaluator(ScalusTransactionEvaluator(protocolParams, utxoSupplier))
+      .ignoreScriptCostEvaluationError(false)
       .buildAndSign()
 
     val transactionId = sendTransaction(tx)

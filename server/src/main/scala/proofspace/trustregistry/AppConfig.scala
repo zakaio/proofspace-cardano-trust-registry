@@ -106,7 +106,8 @@ object ExternalServiceConfig {
   lazy val default = ExternalServiceConfig(
     cardanoKeys = Map(
       "mainnet" -> CardanoKeyConfig.default,
-      "testnet" -> CardanoKeyConfig.default
+      "testnet" -> CardanoKeyConfig.default,
+      "preprod" -> CardanoKeyConfig.default,
     )
   )
   implicit lazy val surface: generic.Surface[ExternalServiceConfig] = generic.deriveSurface[ExternalServiceConfig]
